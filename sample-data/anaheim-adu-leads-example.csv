@@ -1,0 +1,6 @@
+Owner,Mailing Address,Property Address,City,Zip,APN,Permit Number,Permit Issue Date,Permit Status,Description,Job Valuation,Owner Builder,Plan Check,Last Sale Date,Last Sale Price,Permit Score,Priority
+GARCIA ROSA,"100 W Example Ave, Anaheim, CA 92801",100 W Example Ave,Anaheim,92801,000-111-01,BLD2026-00001,3/14/2026,Issued,New detached ADU 800 sq ft,"$185,000",No,PC2025-01001,6/2/2008,"$420,000",88,92
+NGUYEN THANH & LINH,"PO Box 555, Garden Grove, CA 92842",2210 S Sample St,Anaheim,92802,000-111-02,BLD2026-00002,1/9/2026,Finaled,Garage conversion to ADU,"$95,000",Yes,PC2025-01002,10/15/2016,"$610,000",70,74
+SMITH JOHN,"455 N Placeholder Dr, Anaheim, CA 92805",455 N Placeholder Dr,Anaheim,92805,000-111-03,BLD2026-00003,5/21/2026,Issued,Attached ADU addition 650 sq ft,"$150,000",No,PC2026-00103,4/30/2003,"$355,000",90,
+LEE FAMILY TRUST,"9 Demo Ct, Irvine, CA 92618",780 E Test Way,Anaheim,92806,000-111-04,BLD2025-00904,9/3/2025,Issued,JADU conversion within existing home,"$48,000",No,PC2025-00904,2/11/2021,"$905,000",,
+MARTINEZ LUIS,"1301 W Mock Rd, Anaheim, CA 92804",1301 W Mock Rd,Anaheim,92804,000-111-05,BLD2026-00005,7/1/2026,Issued,New detached two-story ADU 1000 sq ft,"$260,000",No,PC2026-00105,8/19/1999,"$240,000",95,96
