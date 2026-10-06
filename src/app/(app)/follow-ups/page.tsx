@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { fetchAllLeads, LEAD_LIST_COLUMNS } from "@/lib/data";
+import { fetchAllLeads, fetchCampaigns, LEAD_LIST_COLUMNS, withoutArchived } from "@/lib/data";
 import { reached } from "@/lib/metrics";
 import { addDays, formatDate, fullPropertyAddress, ownerName, timeAgo, todayISO } from "@/lib/format";
 import StatusBadge, { ScoreBadge } from "@/components/StatusBadge";
@@ -74,7 +74,9 @@ function Bucket({
 
 export default async function FollowUpsPage() {
   const supabase = await createClient();
-  const all = await fetchAllLeads(supabase, LEAD_LIST_COLUMNS);
+  const [allLeads, campaigns] = await Promise.all([fetchAllLeads(supabase, LEAD_LIST_COLUMNS), fetchCampaigns(supabase)]);
+  // Leads in archived campaigns don't need follow-up reminders.
+  const all = withoutArchived(allLeads, campaigns);
   const today = todayISO();
   const weekOut = addDays(today, 7);
 

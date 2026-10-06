@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { fetchCampaigns } from "@/lib/data";
+import { activeCampaigns, fetchCampaigns } from "@/lib/data";
 import ImportWizard from "./ImportWizard";
 
 export const metadata = { title: "Import · ADU Lead Tracker" };
@@ -17,7 +17,7 @@ export default async function ImportPage() {
           statuses, follow-up dates and scan history are never overwritten.
         </p>
       </div>
-      <ImportWizard campaigns={campaigns.map((c) => ({ id: c.id, name: c.name, city: c.city }))} />
+      <ImportWizard campaigns={activeCampaigns(campaigns).map((c) => ({ id: c.id, name: c.name, city: c.city }))} />
     </div>
   );
 }

@@ -13,6 +13,8 @@ Import homeowner leads, give each one a unique QR code, track who scans, and man
 adu-leads/
 ├── supabase/
 │   ├── schema.sql          ← run this first in Supabase (tables, security, functions)
+│   ├── migrations/         ← run these after schema.sql, in date order (V1.1 archive/delete)
+│   ├── tests/              ← throwaway self-tests (roll back, change nothing)
 │   └── seed.sql            ← optional: first campaign + 8 DEMO leads to click around
 ├── sample-data/
 │   └── anaheim-adu-leads-example.csv   ← example import file
@@ -47,6 +49,7 @@ adu-leads/
 2. In the left sidebar click **SQL Editor** → **New query**.
 3. Open `supabase/schema.sql` from this folder, copy **everything**, paste it into the editor, click **Run**.
    You should see "Success. No rows returned."
+   Then do the same with each file in `supabase/migrations/` (currently one: `2026-10-06_v1_1_safe_delete.sql`).
 4. (Optional but recommended) New query again → paste all of `supabase/seed.sql` → **Run**.
    This creates your real campaign **"Anaheim ADU – Wave 1"** plus 8 fake `DEMO-` leads so the dashboard isn't empty. Run it only once.
 5. **Turn off public sign-ups** (important — this is an internal tool):
@@ -213,6 +216,20 @@ Works immediately with nothing else to connect.
 | Postcard design + printing / mail-merge service | Canva, Lob, print shop, etc. |
 
 ---
+
+## Archive & delete (V1.1)
+
+- **Archive a campaign** (Campaigns → *More ▾* → Archive): hides it from the dashboard, follow-ups, QR export
+  and all campaign dropdowns. **Nothing is deleted.** See it under the **Archived** tab and **Restore** any time.
+  To look at archived leads: Leads → tick *Include archived campaigns*, or pick the campaign from the filter.
+- **Permanently delete a campaign** (*More ▾* → Permanently delete…): deletes the campaign, every lead in it, and
+  their scans, events and notes. Shows counts first and requires typing `DELETE`. If postcards were already mailed,
+  the dialog recommends **Archive instead**.
+- **Delete leads**: tick rows on the Leads page (or the header box to tick all visible) → *Delete selected…*.
+- **Delete all filtered leads**: apply at least one filter, then use the small *Delete all N filtered leads…* link.
+  The dialog lists the filters and the exact count; if the count changes before you confirm, nothing is deleted.
+
+Before using these on real data, run through **TESTING-v1.1.md**.
 
 ## Everyday use
 

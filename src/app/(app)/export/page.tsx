@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
-import { fetchCampaigns } from "@/lib/data";
+import { campaignOptions, fetchCampaigns } from "@/lib/data";
 import { getExportRows } from "@/lib/export";
 import { qrImagePath } from "@/lib/tracking";
 import MarkQueuedButton from "./MarkQueuedButton";
@@ -44,9 +44,9 @@ export default async function ExportPage({
         <div className="min-w-56">
           <label className="label" htmlFor="campaign">Campaign</label>
           <select id="campaign" name="campaign" defaultValue={params.campaign ?? ""} className="input">
-            <option value="">All campaigns</option>
-            {campaigns.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+            <option value="">All active campaigns</option>
+            {campaignOptions(campaigns, params.campaign).map((c) => (
+              <option key={c.id} value={c.id}>{c.name}{c.archived_at ? " (archived)" : ""}</option>
             ))}
           </select>
         </div>

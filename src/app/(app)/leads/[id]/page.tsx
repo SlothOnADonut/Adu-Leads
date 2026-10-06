@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { fetchCampaigns } from "@/lib/data";
+import { campaignOptions, fetchCampaigns } from "@/lib/data";
 import { EVENT_LABELS } from "@/lib/constants";
 import { formatCurrency, formatDate, formatDateTime, fullPropertyAddress, ownerName, todayISO } from "@/lib/format";
 import { qrImagePath, trackingUrl } from "@/lib/tracking";
@@ -172,7 +172,10 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
                 <div className="col-span-2">
                   <Field label="Campaign">
                     {campaign ? (
-                      <Link href={`/leads?campaign=${campaign.id}`} className="text-forest-700 hover:underline">{campaign.name}</Link>
+                      <Link href={`/leads?campaign=${campaign.id}`} className="text-forest-700 hover:underline">
+                        {campaign.name}
+                        {campaign.archived_at ? " (archived)" : ""}
+                      </Link>
                     ) : null}
                   </Field>
                 </div>
@@ -216,7 +219,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
 
         <div className="space-y-5">
           <Section title="Status">
-            <StatusForm lead={lead} campaigns={campaigns} />
+            <StatusForm lead={lead} campaigns={campaignOptions(campaigns, lead.campaign_id)} />
           </Section>
 
           <Section title="QR code">

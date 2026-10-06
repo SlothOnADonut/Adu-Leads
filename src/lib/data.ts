@@ -27,6 +27,28 @@ export async function fetchCampaigns(supabase: SupabaseClient): Promise<Campaign
   return (data ?? []) as unknown as Campaign[];
 }
 
+/** Campaigns that are not archived. */
+export function activeCampaigns(campaigns: Campaign[]): Campaign[] {
+  return campaigns.filter((c) => !c.archived_at);
+}
+
+/** IDs of archived campaigns (their leads are hidden from normal views). */
+export function archivedCampaignIds(campaigns: Campaign[]): Set<string> {
+  return new Set(campaigns.filter((c) => c.archived_at).map((c) => c.id));
+}
+
+/** Drops leads that belong to an archived campaign. Leads with no campaign stay. */
+export function withoutArchived<T extends { campaign_id: string | null }>(leads: T[], campaigns: Campaign[]): T[] {
+  const archived = archivedCampaignIds(campaigns);
+  if (archived.size === 0) return leads;
+  return leads.filter((l) => !l.campaign_id || !archived.has(l.campaign_id));
+}
+
+/** Campaign dropdown options: active ones, plus the currently selected one even if archived. */
+export function campaignOptions(campaigns: Campaign[], selectedId?: string | null): Campaign[] {
+  return campaigns.filter((c) => !c.archived_at || c.id === selectedId);
+}
+
 export interface CampaignWithStats extends Campaign {
   stats: Summary;
 }

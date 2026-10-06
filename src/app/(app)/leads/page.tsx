@@ -1,26 +1,18 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { fetchCampaigns, LEAD_LIST_COLUMNS } from "@/lib/data";
+import { campaignOptions, fetchCampaigns, LEAD_LIST_COLUMNS } from "@/lib/data";
 import { FOLLOW_UP_STATUSES } from "@/lib/constants";
-import { addDays, formatCurrency, formatDate, ownerName, timeAgo, todayISO } from "@/lib/format";
+import { formatCurrency, formatDate, ownerName, timeAgo, todayISO } from "@/lib/format";
+import { applyLeadFilters, describeFilters, hasNarrowingFilter, pickFilters, type LeadFilterParams } from "@/lib/lead-filters";
+import { BulkBar, RowCheckbox, SelectAllCheckbox, SelectionProvider } from "./LeadSelection";
 import StatusBadge, { ScoreBadge } from "@/components/StatusBadge";
 import type { Lead } from "@/lib/types";
 
 export const metadata = { title: "Leads · ADU Lead Tracker" };
 
-type Params = {
-  campaign?: string;
-  city?: string;
-  min?: string;
-  scanned?: string;
-  status?: string;
-  sent?: string;
-  due?: string;
-  mailing?: string;
-  q?: string;
-  sort?: string;
-  dir?: string;
-};
+type Params = LeadFilterParams & { sort?: string; dir?: string };
+
+const ROW_LIMIT = 2000;
 
 const SORTS: Record<string, { column: string; label: string }> = {
   priority: { column: "final_priority_score", label: "Priority" },
@@ -40,40 +32,23 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const sortKey = params.sort && SORTS[params.sort] ? params.sort : "priority";
   const ascending = params.dir === "asc" || (!params.dir && (sortKey === "code" || sortKey === "followup"));
 
-  let query = supabase.from("leads").select(LEAD_LIST_COLUMNS, { count: "exact" });
+  const filters = pickFilters(params as Record<string, unknown>);
+  const campaigns = await fetchCampaigns(supabase);
+  const archivedIds = campaigns.filter((c) => c.archived_at).map((c) => c.id);
 
-  if (params.campaign === "none") query = query.is("campaign_id", null);
-  else if (params.campaign) query = query.eq("campaign_id", params.campaign);
-  if (params.city) query = query.ilike("city", params.city);
-  if (params.min) query = query.gte("final_priority_score", Number(params.min) || 0);
-  if (params.scanned === "yes") query = query.gt("qr_scan_count", 0);
-  if (params.scanned === "no") query = query.eq("qr_scan_count", 0);
-  if (params.status) query = query.eq("follow_up_status", params.status);
-  if (params.sent === "yes") query = query.not("postcard_sent_date", "is", null);
-  if (params.sent === "no") query = query.is("postcard_sent_date", null);
-  if (params.due === "overdue") query = query.lt("next_follow_up_date", today);
-  if (params.due === "today") query = query.eq("next_follow_up_date", today);
-  if (params.due === "due") query = query.lte("next_follow_up_date", today);
-  if (params.due === "week") query = query.lte("next_follow_up_date", addDays(today, 7));
-  if (params.mailing === "same") query = query.eq("mailing_differs", false);
-  if (params.mailing === "different") query = query.eq("mailing_differs", true);
-  if (params.q) {
-    const q = params.q.replace(/[,()*%]/g, " ").trim();
-    if (q) {
-      query = query.or(
-        `lead_code.ilike.%${q}%,owner_name_raw.ilike.%${q}%,last_name.ilike.%${q}%,property_address.ilike.%${q}%,mailing_address.ilike.%${q}%,apn.ilike.%${q}%,permit_number.ilike.%${q}%`
-      );
-    }
-  }
-
-  query = query
+  // Same filter function the "Delete all filtered leads" action uses.
+  const query = applyLeadFilters(
+    supabase.from("leads").select(LEAD_LIST_COLUMNS, { count: "exact" }),
+    filters,
+    today,
+    archivedIds
+  )
     .order(SORTS[sortKey].column, { ascending, nullsFirst: false })
     .order("lead_code", { ascending: true })
-    .limit(2000);
+    .limit(ROW_LIMIT);
 
-  const [{ data, count, error }, campaigns, citiesRes] = await Promise.all([
+  const [{ data, count, error }, citiesRes] = await Promise.all([
     query,
-    fetchCampaigns(supabase),
     supabase.from("leads").select("city").not("city", "is", null).limit(5000),
   ]);
 
@@ -99,7 +74,10 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
     </th>
   );
 
-  const hasFilters = Object.entries(params).some(([k, v]) => v && k !== "sort" && k !== "dir");
+  const hasFilters = Object.keys(filters).length > 0;
+  const narrowing = hasNarrowingFilter(filters);
+  const total = count ?? leads.length;
+  const filterKey = JSON.stringify(filters);
 
   return (
     <div className="space-y-5">
@@ -107,8 +85,9 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
         <div>
           <h1 className="page-title">Leads</h1>
           <p className="mt-1 text-sm text-charcoal-light">
-            {count ?? leads.length} lead{(count ?? leads.length) === 1 ? "" : "s"}
-            {hasFilters ? " match your filters" : ""}
+            {total} lead{total === 1 ? "" : "s"}
+            {narrowing ? " match your filters" : ""}
+            {total > leads.length ? ` · showing first ${leads.length}` : ""}
           </p>
         </div>
         <Link href="/import" className="btn-primary">Import CSV</Link>
@@ -123,8 +102,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
           <label className="label" htmlFor="campaign">Campaign</label>
           <select id="campaign" name="campaign" defaultValue={params.campaign ?? ""} className="input">
             <option value="">All</option>
-            {campaigns.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+            {campaignOptions(campaigns, params.campaign).map((c) => (
+              <option key={c.id} value={c.id}>{c.name}{c.archived_at ? " (archived)" : ""}</option>
             ))}
             <option value="none">No campaign</option>
           </select>
@@ -190,6 +169,12 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
             <option value="different">Different mailing address</option>
           </select>
         </div>
+        {archivedIds.length > 0 && (
+          <label className="col-span-2 flex items-center gap-2 self-end pb-2 text-sm text-charcoal-light sm:col-span-1">
+            <input type="checkbox" name="archived" value="1" defaultChecked={params.archived === "1"} className="h-4 w-4 accent-forest-700" />
+            Include archived campaigns
+          </label>
+        )}
         <input type="hidden" name="sort" value={sortKey} />
         <input type="hidden" name="dir" value={ascending ? "asc" : "desc"} />
         <div className="col-span-2 flex items-end gap-2 sm:col-span-1 lg:col-span-2">
@@ -200,11 +185,20 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
 
       {error && <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error.message}</p>}
 
+      <SelectionProvider key={filterKey} visibleIds={leads.map((l) => l.id)}>
+      <BulkBar
+        filters={filters as Record<string, string>}
+        filterDescriptions={describeFilters(filters, campaigns, today)}
+        filteredCount={total}
+        canDeleteFiltered={narrowing && !error}
+        truncated={total > leads.length}
+      />
       <div className="card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="table-base">
             <thead>
               <tr>
+                <th className="w-8"><SelectAllCheckbox /></th>
                 <SortTh k="code">Lead</SortTh>
                 <th>Owner</th>
                 <th>Property</th>
@@ -222,13 +216,14 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
             <tbody>
               {leads.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="py-10 text-center text-charcoal-light">
+                  <td colSpan={13} className="py-10 text-center text-charcoal-light">
                     No leads found. {hasFilters ? "Try clearing filters." : <Link href="/import" className="text-forest-700 underline">Import your first CSV</Link>}
                   </td>
                 </tr>
               )}
               {leads.map((l) => (
                 <tr key={l.id}>
+                  <td className="w-8"><RowCheckbox id={l.id} label={l.lead_code} /></td>
                   <td className="whitespace-nowrap">
                     <Link href={`/leads/${l.id}`} className="font-mono text-xs font-semibold text-forest-700 hover:underline">
                       {l.lead_code}
@@ -290,6 +285,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
           </table>
         </div>
       </div>
+      </SelectionProvider>
     </div>
   );
 }

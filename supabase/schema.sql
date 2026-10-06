@@ -1,7 +1,8 @@
 -- =====================================================================
 -- ADU → HELOC Lead Tracker — Supabase schema (V1)
 -- Paste this whole file into Supabase → SQL Editor → New query → Run.
--- Safe to run on a fresh project. Run seed.sql afterwards (optional).
+-- Safe to run on a fresh project. Then run every file in supabase/migrations/
+-- (in date order), then seed.sql (optional).
 -- =====================================================================
 
 create extension if not exists pgcrypto;

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { campaignStats, fetchAllLeads, fetchCampaigns, LEAD_LIST_COLUMNS } from "@/lib/data";
+import { activeCampaigns, archivedCampaignIds, campaignStats, fetchAllLeads, fetchCampaigns, LEAD_LIST_COLUMNS, withoutArchived } from "@/lib/data";
 import { reached, summarize } from "@/lib/metrics";
 import { formatDate, formatPercent, fullPropertyAddress, ownerName, timeAgo, todayISO } from "@/lib/format";
 import StatCard from "@/components/StatCard";
@@ -14,25 +14,30 @@ export const metadata = { title: "Dashboard · ADU Lead Tracker" };
 interface ScanRow {
   id: string;
   created_at: string;
-  lead: Pick<Lead, "id" | "lead_code" | "first_name" | "last_name" | "owner_name_raw" | "property_address" | "city" | "state" | "zip" | "follow_up_status"> | null;
+  lead: Pick<Lead, "id" | "campaign_id" | "lead_code" | "first_name" | "last_name" | "owner_name_raw" | "property_address" | "city" | "state" | "zip" | "follow_up_status"> | null;
 }
 
 export default async function DashboardPage() {
   const supabase = await createClient();
-  const [leads, campaigns, scansRes] = await Promise.all([
+  const [allLeads, campaigns, scansRes] = await Promise.all([
     fetchAllLeads(supabase, LEAD_LIST_COLUMNS),
     fetchCampaigns(supabase),
     supabase
       .from("tracking_events")
       .select(
-        "id, created_at, lead:leads(id, lead_code, first_name, last_name, owner_name_raw, property_address, city, state, zip, follow_up_status)"
+        "id, created_at, lead:leads(id, campaign_id, lead_code, first_name, last_name, owner_name_raw, property_address, city, state, zip, follow_up_status)"
       )
       .eq("event_type", "qr_scan")
       .order("created_at", { ascending: false })
-      .limit(10),
+      .limit(25),
   ]);
 
-  const recentScans = (scansRes.data ?? []) as unknown as ScanRow[];
+  // Archived campaigns are hidden from the dashboard (nothing is deleted).
+  const leads = withoutArchived(allLeads, campaigns);
+  const archived = archivedCampaignIds(campaigns);
+  const recentScans = ((scansRes.data ?? []) as unknown as ScanRow[])
+    .filter((e) => e.lead && (!e.lead.campaign_id || !archived.has(e.lead.campaign_id)))
+    .slice(0, 10);
   const s = summarize(leads);
   const today = todayISO();
 
@@ -50,7 +55,7 @@ export default async function DashboardPage() {
     )
     .slice(0, 8);
 
-  const perCampaign = campaignStats(campaigns, leads);
+  const perCampaign = campaignStats(activeCampaigns(campaigns), leads);
 
   return (
     <div className="space-y-6">

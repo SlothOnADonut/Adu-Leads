@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { FOLLOW_UP_STATUSES, type FollowUpStatus } from "@/lib/constants";
 import { advanceStatus } from "@/lib/metrics";
 import { addDays, formatDate, todayISO } from "@/lib/format";
-import type { Lead } from "@/lib/types";
+import type { Campaign, Lead } from "@/lib/types";
+import { applyLeadFilters, hasNarrowingFilter, pickFilters } from "@/lib/lead-filters";
 
 export type QuickAction =
   | "postcard_queued"
@@ -202,4 +203,93 @@ export async function saveNotes(leadId: string, formData: FormData): Promise<{ e
   if (error) return { error: error.message };
   refreshAll();
   return {};
+}
+
+// ---------------------------------------------------------------------
+// V1.1 — safe deletion
+// Both actions run the delete_leads() database function, which deletes
+// the leads and their tracking events in ONE transaction and refuses to
+// run unless the confirmation text is exactly "DELETE".
+// ---------------------------------------------------------------------
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const MAX_DELETE = 5000;
+
+export interface DeleteResult {
+  error?: string;
+  leadsDeleted?: number;
+  eventsDeleted?: number;
+}
+
+/** Deletes exactly the lead IDs that were ticked on the Leads page. */
+export async function deleteLeads(leadIds: string[], confirmText: string): Promise<DeleteResult> {
+  if (confirmText !== "DELETE") return { error: "Type DELETE to confirm." };
+  const { supabase } = await requireUser();
+
+  const ids = Array.from(new Set((leadIds ?? []).filter((id) => typeof id === "string" && UUID_RE.test(id))));
+  if (ids.length === 0) return { error: "No leads selected." };
+  if (ids.length !== leadIds.length) return { error: "Selection contained invalid IDs. Nothing was deleted." };
+  if (ids.length > MAX_DELETE) return { error: `Too many at once (max ${MAX_DELETE}).` };
+
+  const { data, error } = await supabase.rpc("delete_leads", { p_lead_ids: ids, p_confirm: "DELETE" });
+  if (error) return { error: error.message };
+
+  refreshAll();
+  const res = data as unknown as { leads_deleted: number; events_deleted: number };
+  return { leadsDeleted: res.leads_deleted, eventsDeleted: res.events_deleted };
+}
+
+/**
+ * Deletes every lead matching the Leads page's CURRENT filters.
+ * Safety:
+ *  - at least one narrowing filter is required (never "everything");
+ *  - the server re-runs the exact same filter and refuses if the number
+ *    of matches differs from the number the user saw and confirmed.
+ */
+export async function deleteFilteredLeads(
+  rawFilters: Record<string, unknown>,
+  expectedCount: number,
+  confirmText: string
+): Promise<DeleteResult> {
+  if (confirmText !== "DELETE") return { error: "Type DELETE to confirm." };
+  const { supabase } = await requireUser();
+
+  const filters = pickFilters(rawFilters ?? {});
+  if (!hasNarrowingFilter(filters)) {
+    return { error: "Add at least one filter first. Deleting the whole database is not allowed from here." };
+  }
+
+  const { data: campData, error: campError } = await supabase.from("campaigns").select("id, archived_at");
+  if (campError) return { error: campError.message };
+  const archivedIds = ((campData ?? []) as unknown as Pick<Campaign, "id" | "archived_at">[])
+    .filter((c) => c.archived_at)
+    .map((c) => c.id);
+
+  const ids: string[] = [];
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const base = supabase.from("leads").select("id");
+    const { data, error } = await applyLeadFilters(base, filters, todayISO(), archivedIds)
+      .order("id", { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) return { error: error.message };
+    const rows = (data ?? []) as unknown as { id: string }[];
+    ids.push(...rows.map((r) => r.id));
+    if (rows.length < PAGE) break;
+    if (ids.length > MAX_DELETE) return { error: `More than ${MAX_DELETE} leads match. Narrow the filters.` };
+  }
+
+  if (ids.length !== expectedCount) {
+    return {
+      error: `The number of matching leads changed (you confirmed ${expectedCount}, now ${ids.length}). Nothing was deleted — reload the page and review again.`,
+    };
+  }
+  if (ids.length === 0) return { error: "No leads match these filters." };
+
+  const { data, error } = await supabase.rpc("delete_leads", { p_lead_ids: ids, p_confirm: "DELETE" });
+  if (error) return { error: error.message };
+
+  refreshAll();
+  const res = data as unknown as { leads_deleted: number; events_deleted: number };
+  return { leadsDeleted: res.leads_deleted, eventsDeleted: res.events_deleted };
 }

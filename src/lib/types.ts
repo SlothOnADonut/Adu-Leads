@@ -9,6 +9,8 @@ export interface Campaign {
   landing_page_version: string | null;
   sent_date: string | null;
   notes: string | null;
+  /** Set when archived (V1.1). Archived campaigns are hidden from normal views. */
+  archived_at?: string | null;
   created_at: string;
 }
 

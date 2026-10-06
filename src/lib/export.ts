@@ -48,10 +48,13 @@ export interface ExportFilter {
 export async function getExportRows(supabase: SupabaseClient, origin: string, filter: ExportFilter): Promise<ExportRow[]> {
   const [leads, campaigns] = await Promise.all([fetchAllLeads(supabase), fetchCampaigns(supabase)]);
   const campaignName = new Map(campaigns.map((c) => [c.id, c.name]));
+  const archived = new Set(campaigns.filter((c) => c.archived_at).map((c) => c.id));
 
   return leads
     .filter((l) => l.follow_up_status !== "Do not contact")
-    .filter((l) => (filter.campaign ? l.campaign_id === filter.campaign : true))
+    .filter((l) =>
+      filter.campaign ? l.campaign_id === filter.campaign : !l.campaign_id || !archived.has(l.campaign_id)
+    )
     .filter((l) => (filter.includeSent ? true : !l.postcard_sent_date))
     .map((l) => ({
       lead_code: l.lead_code,

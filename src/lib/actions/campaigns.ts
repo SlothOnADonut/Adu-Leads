@@ -109,3 +109,75 @@ export async function markCampaignPostcards(
   revalidatePath("/", "layout");
   return { count: ids.length };
 }
+
+// ---------------------------------------------------------------------
+// V1.1 — archive / restore / permanent delete
+// ---------------------------------------------------------------------
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Archive hides the campaign from normal views. Nothing is deleted. */
+export async function archiveCampaign(campaignId: string): Promise<{ error?: string }> {
+  if (!UUID_RE.test(campaignId)) return { error: "Invalid campaign" };
+  const { supabase } = await requireUser();
+  const { error } = await supabase
+    .from("campaigns")
+    .update({ archived_at: new Date().toISOString() })
+    .eq("id", campaignId);
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  return {};
+}
+
+export async function restoreCampaign(campaignId: string): Promise<{ error?: string }> {
+  if (!UUID_RE.test(campaignId)) return { error: "Invalid campaign" };
+  const { supabase } = await requireUser();
+  const { error } = await supabase.from("campaigns").update({ archived_at: null }).eq("id", campaignId);
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  return {};
+}
+
+export interface CampaignDeletionPreview {
+  id: string;
+  name: string;
+  archived_at: string | null;
+  sent_date: string | null;
+  lead_count: number;
+  scan_count: number;
+  mailed_lead_count: number;
+  event_count: number;
+}
+
+/** Fresh counts for the delete dialog, straight from the database. */
+export async function getCampaignDeletionPreview(
+  campaignId: string
+): Promise<{ error?: string; preview?: CampaignDeletionPreview }> {
+  if (!UUID_RE.test(campaignId)) return { error: "Invalid campaign" };
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("campaign_deletion_preview", { p_campaign_id: campaignId });
+  if (error) return { error: error.message };
+  return { preview: data as unknown as CampaignDeletionPreview };
+}
+
+/**
+ * Permanently deletes ONE campaign plus its leads and their events, in a
+ * single database transaction (delete_campaign_permanently). Other
+ * campaigns, users and settings are never touched.
+ */
+export async function deleteCampaignPermanently(
+  campaignId: string,
+  confirmText: string
+): Promise<{ error?: string; leadsDeleted?: number; eventsDeleted?: number }> {
+  if (confirmText !== "DELETE") return { error: "Type DELETE to confirm." };
+  if (!UUID_RE.test(campaignId)) return { error: "Invalid campaign" };
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("delete_campaign_permanently", {
+    p_campaign_id: campaignId,
+    p_confirm: "DELETE",
+  });
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  const res = data as unknown as { leads_deleted: number; events_deleted: number };
+  return { leadsDeleted: res.leads_deleted, eventsDeleted: res.events_deleted };
+}
