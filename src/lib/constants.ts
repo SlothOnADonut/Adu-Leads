@@ -44,7 +44,11 @@ export const APPOINTMENT_STATUSES = ["Booked", "Completed", "No-show", "Canceled
 export const APPLICATION_STATUSES = ["Started", "Submitted", "Approved", "Declined"];
 export const FUNDED_STATUSES = ["Funded"];
 
+/** Internal lead code (ANA-0001). Never used in public URLs (V1.6.2). */
 export const LEAD_CODE_RE = /^[A-Z]{2,5}-[0-9]{4,6}$/;
+
+/** Public, random, non-sequential lead token used in postcard URLs (?ref=…). Case-sensitive. */
+export const PUBLIC_TOKEN_RE = /^[A-Za-z0-9_-]{16}$/;
 
 export const EVENT_LABELS: Record<string, string> = {
   postcard_queued: "Postcard queued",

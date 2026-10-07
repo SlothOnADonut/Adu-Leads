@@ -5,6 +5,7 @@ import { trackingUrl } from "./tracking";
 
 export interface ExportRow {
   lead_code: string;
+  public_token: string;
   owner_name: string;
   first_name: string;
   last_name: string;
@@ -23,6 +24,7 @@ export interface ExportRow {
 
 export const EXPORT_COLUMNS: (keyof ExportRow)[] = [
   "lead_code",
+  "public_token",
   "owner_name",
   "first_name",
   "last_name",
@@ -58,6 +60,7 @@ export async function getExportRows(supabase: SupabaseClient, origin: string, fi
     .filter((l) => (filter.includeSent ? true : !l.postcard_sent_date))
     .map((l) => ({
       lead_code: l.lead_code,
+      public_token: l.public_token,
       owner_name: ownerName(l),
       first_name: l.first_name ?? "",
       last_name: l.last_name ?? "",
@@ -66,8 +69,8 @@ export async function getExportRows(supabase: SupabaseClient, origin: string, fi
       city: l.city ?? "",
       state: l.state ?? "",
       zip: l.zip ?? "",
-      unique_tracking_url: trackingUrl(l.lead_code),
-      qr_image_url: `${origin}/api/qr/${l.lead_code}.png?size=1200`,
+      unique_tracking_url: trackingUrl(l.public_token),
+      qr_image_url: `${origin}/api/qr/${encodeURIComponent(l.public_token)}.png?size=1200`,
       qr_png_filename: `${l.lead_code}.png`,
       campaign_id: l.campaign_id ?? "",
       campaign_name: l.campaign_id ? campaignName.get(l.campaign_id) ?? "" : "",

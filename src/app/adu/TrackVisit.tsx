@@ -2,12 +2,17 @@
 
 import { useEffect, useRef } from "react";
 
-/** Logs one visit per page load, then removes ?lead= from the address bar so refreshes and shared links don't count again. */
-export default function TrackVisit({ lead }: { lead: string | null }) {
+/**
+ * Logs one visit per page load using the public token (?ref=…).
+ * V1.6.2: the ref stays in the address bar so personalization survives a
+ * refresh; the server-side 30-minute dedupe stops refreshes from counting as
+ * new scans.
+ */
+export default function TrackVisit({ token }: { token: string | null }) {
   const sent = useRef(false);
 
   useEffect(() => {
-    if (!lead || sent.current) return;
+    if (!token || sent.current) return;
     sent.current = true;
 
     const params = new URLSearchParams(window.location.search);
@@ -16,7 +21,7 @@ export default function TrackVisit({ lead }: { lead: string | null }) {
       headers: { "Content-Type": "application/json" },
       keepalive: true,
       body: JSON.stringify({
-        lead,
+        ref: token,
         source: params.get("src") === "link" ? "link" : "qr",
         referrer: document.referrer || undefined,
         page: window.location.pathname,
@@ -27,13 +32,9 @@ export default function TrackVisit({ lead }: { lead: string | null }) {
     }).catch(() => {});
 
     try {
-      sessionStorage.setItem("adu_lead", lead);
+      sessionStorage.setItem("adu_ref", token);
     } catch {}
-    params.delete("lead");
-    params.delete("src");
-    const clean = window.location.pathname + (params.toString() ? `?${params.toString()}` : "") + window.location.hash;
-    window.history.replaceState(null, "", clean);
-  }, [lead]);
+  }, [token]);
 
   return null;
 }

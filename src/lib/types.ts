@@ -18,6 +18,8 @@ export interface Campaign {
 export interface Lead {
   id: string;
   lead_code: string;
+  /** Random public token for postcard URLs (V1.6.2). Never derived from lead data. */
+  public_token: string;
   first_name: string | null;
   last_name: string | null;
   owner_name_raw: string | null;
@@ -67,6 +69,13 @@ export interface Lead {
   // V1.4 postcard
   postcard_status?: "not_ready" | "ready" | "approved";
   postcard_approved_at?: string | null;
+  // V1.5 structured mailing info (mailing_complete is computed by the database)
+  mailing_name?: string | null;
+  mailing_street?: string | null;
+  mailing_city?: string | null;
+  mailing_state?: string | null;
+  mailing_zip?: string | null;
+  mailing_complete?: boolean;
   created_at: string;
   updated_at: string;
 }

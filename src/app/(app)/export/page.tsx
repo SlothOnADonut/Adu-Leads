@@ -100,7 +100,7 @@ export default async function ExportPage({
                 <tr key={r.lead_code}>
                   <td>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={qrImagePath(r.lead_code, 160)} alt="" width={48} height={48} loading="lazy" className="rounded border border-cream-200" />
+                    <img src={qrImagePath(r.public_token, 160)} alt="" width={48} height={48} loading="lazy" className="rounded border border-cream-200" />
                   </td>
                   <td className="font-mono text-xs font-semibold text-forest-700">{r.lead_code}</td>
                   <td className="text-sm">{r.owner_name}</td>

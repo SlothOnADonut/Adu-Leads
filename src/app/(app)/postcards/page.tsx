@@ -4,6 +4,8 @@ import { campaignOptions, fetchCampaigns } from "@/lib/data";
 import { fullPropertyAddress, ownerName } from "@/lib/format";
 import {
   canGeneratePostcard,
+  isPostcardReady,
+  missingMailingFields,
   notReadyReason,
   POSTCARD_LEAD_COLUMNS,
   renderPostcardSide,
@@ -14,6 +16,7 @@ import PostcardStatusBadge from "@/components/postcards/PostcardStatusBadge";
 import DownloadPostcardButton from "@/components/postcards/DownloadPostcardButton";
 import ApprovePostcardButton from "@/components/postcards/ApprovePostcardButton";
 import { ImageStatusBadge } from "@/components/StatusBadge";
+import { disclosurePlaceholderActive } from "@/lib/postcards/content";
 
 export const metadata = { title: "Postcards · ADU Lead Tracker" };
 
@@ -23,6 +26,7 @@ const FILTERS = [
   { key: "ready", label: "Ready" },
   { key: "approved", label: "Approved" },
   { key: "not_ready", label: "Not ready" },
+  { key: "missing_mailing", label: "Missing mailing info" },
 ] as const;
 
 export default async function PostcardsPage({
@@ -36,7 +40,7 @@ export default async function PostcardsPage({
   const options = campaignOptions(campaigns, params.campaign);
   const campaignId = params.campaign ?? options.find((c) => !c.archived_at)?.id ?? "";
   const campaign = campaigns.find((c) => c.id === campaignId) ?? null;
-  const status = ["ready", "approved", "not_ready"].includes(params.status ?? "") ? params.status! : "";
+  const status = ["ready", "approved", "not_ready", "missing_mailing"].includes(params.status ?? "") ? params.status! : "";
   const page = Math.max(1, Number(params.page) || 1);
 
   const leads: PostcardLead[] = [];
@@ -57,16 +61,23 @@ export default async function PostcardsPage({
   const total = leads.length;
   const imageReady = leads.filter((l) => l.property_image_status === "approved").length;
   const missingImages = leads.filter((l) => l.property_image_status === "missing").length;
-  const postcardsReady = leads.filter((l) => l.postcard_status !== "not_ready").length;
+  const postcardsReady = leads.filter((l) => l.postcard_status !== "not_ready" && isPostcardReady(l)).length;
   const approved = leads.filter((l) => l.postcard_status === "approved").length;
+  const missingMailing = leads.filter((l) => !l.mailing_complete).length;
   const counts: Record<string, number> = {
     "": total,
     ready: leads.filter((l) => l.postcard_status === "ready").length,
     approved,
     not_ready: leads.filter((l) => l.postcard_status === "not_ready").length,
+    missing_mailing: missingMailing,
   };
 
-  const filtered = status ? leads.filter((l) => l.postcard_status === status) : leads;
+  const filtered =
+    status === "missing_mailing"
+      ? leads.filter((l) => !l.mailing_complete)
+      : status
+        ? leads.filter((l) => l.postcard_status === status)
+        : leads;
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const shown = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -86,7 +97,7 @@ export default async function PostcardsPage({
         <div>
           <h1 className="page-title">Postcards</h1>
           <p className="mt-1 text-sm text-charcoal-light">
-            Personalized 9×6 postcards. Only leads with an <b>Approved</b> property image get a postcard.
+            Personalized 9×6 postcards. Ready = <b>Approved</b> property image + complete mailing information.
           </p>
         </div>
         {campaign && (
@@ -115,11 +126,19 @@ export default async function PostcardsPage({
         <div className="card px-5 py-12 text-center text-sm text-charcoal-light">Create a campaign and import leads first.</div>
       ) : (
         <>
-          <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {disclosurePlaceholderActive() && (
+            <div className="rounded-xl border border-gold/40 bg-gold-light/40 px-4 py-3 text-xs text-charcoal">
+              <b>Disclosure placeholder:</b> the back of every postcard shows a labeled box where your employer-approved
+              disclosure goes. Add the approved text in <code>src/lib/postcards/content.ts</code> (EMPLOYER_DISCLOSURE) before a real print run.
+            </div>
+          )}
+
+          <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {[
               ["Total leads", total],
               ["Image ready", imageReady],
               ["Missing images", missingImages],
+              ["Missing mailing info", missingMailing],
               ["Postcards ready", postcardsReady],
             ].map(([label, value]) => (
               <div key={label as string} className="card px-4 py-3">
@@ -167,7 +186,9 @@ export default async function PostcardsPage({
           ) : (
             <div className="grid gap-4 lg:grid-cols-2">
               {shown.map((l, i) => {
-                const ready = canGeneratePostcard(l);
+                const drawable = canGeneratePostcard(l); // approved image → can be previewed
+                const ready = isPostcardReady(l); // + complete mailing → can be approved/downloaded/exported
+                const missing = missingMailingFields(l);
                 const dnc = l.follow_up_status === "Do not contact";
                 return (
                   <article key={l.id} className="card overflow-hidden">
@@ -176,6 +197,11 @@ export default async function PostcardsPage({
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="font-mono text-xs font-semibold text-forest-700">{l.lead_code}</span>
                           <PostcardStatusBadge status={l.postcard_status} />
+                          {missing.length > 0 && (
+                            <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+                              Missing mailing information
+                            </span>
+                          )}
                           {dnc && (
                             <span className="rounded-full border border-rose-200 bg-rose-50 px-2 py-0.5 text-[11px] text-rose-700">
                               Do not contact — excluded from exports
@@ -188,20 +214,29 @@ export default async function PostcardsPage({
                       {ready && <ApprovePostcardButton leadId={l.id} status={l.postcard_status} imageUrl={l.property_image_url} />}
                     </div>
 
-                    {ready ? (
+                    {drawable ? (
                       <>
                         <div className="grid grid-cols-2 gap-2 bg-cream-100/60 p-3">
                           <Link href={`/postcards/${l.id}`} title="Open preview" className="block rounded border border-cream-200 bg-white">
                             <PostcardSvg svg={renderPostcardSide(l, "front", { idPrefix: `l${i}f` })} />
                           </Link>
                           <Link href={`/postcards/${l.id}?side=back`} title="Open preview" className="block rounded border border-cream-200 bg-white">
-                            <PostcardSvg svg={renderPostcardSide(l, "back", { idPrefix: `l${i}b` })} />
+                            <PostcardSvg svg={renderPostcardSide(l, "back", { idPrefix: `l${i}b`, withAddress: true })} />
                           </Link>
                         </div>
                         <div className="flex flex-wrap items-start gap-2 px-4 py-3">
                           <Link href={`/postcards/${l.id}`} className="btn-primary btn-sm">Preview</Link>
-                          <DownloadPostcardButton leadId={l.id} leadCode={l.lead_code} side="front" label="Download front" />
-                          <DownloadPostcardButton leadId={l.id} leadCode={l.lead_code} side="back" label="Download back" />
+                          {ready && !dnc ? (
+                            <>
+                              <DownloadPostcardButton leadId={l.id} leadCode={l.lead_code} side="front" label="Download front" />
+                              <DownloadPostcardButton leadId={l.id} leadCode={l.lead_code} side="back" label="Download back" />
+                            </>
+                          ) : missing.length > 0 ? (
+                            <span className="self-center text-xs text-amber-800">
+                              Needs {missing.join(", ")} —{" "}
+                              <Link href={`/leads/${l.id}`} className="font-medium underline">add on lead page</Link>. Preview only.
+                            </span>
+                          ) : null}
                         </div>
                       </>
                     ) : (

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { canGeneratePostcard, POSTCARD_LEAD_COLUMNS, renderPostcardSide, type PostcardLead } from "@/lib/postcards/data";
+import { isPostcardReady, POSTCARD_LEAD_COLUMNS, renderPostcardSide, type PostcardLead } from "@/lib/postcards/data";
 import PrintToolbar from "./PrintToolbar";
 import "./print.css";
 
@@ -12,7 +12,7 @@ const MAX = 300;
 
 /**
  * Printable batch for ONE campaign: every APPROVED postcard (front, back, front, back…).
- * Excludes not-approved postcards and "Do not contact" leads.
+ * Excludes not-approved postcards, incomplete mailing info and "Do not contact" leads.
  *   /print/postcards?campaign=<id>[&address=1]
  */
 export default async function PrintCampaignPostcards({
@@ -28,15 +28,14 @@ export default async function PrintCampaignPostcards({
   if (!user) redirect("/login");
   if (!campaign || !UUID_RE.test(campaign)) return <p className="p-8 text-sm">Pick a campaign on the Postcards page first.</p>;
 
+  // postcard_export_candidates = approved postcard + approved image + complete mailing + not DNC
   const { data } = await supabase
-    .from("leads")
+    .from("postcard_export_candidates")
     .select(POSTCARD_LEAD_COLUMNS)
     .eq("campaign_id", campaign)
-    .eq("postcard_status", "approved")
-    .neq("follow_up_status", "Do not contact")
     .order("lead_code", { ascending: true })
     .limit(MAX);
-  const leads = ((data ?? []) as unknown as PostcardLead[]).filter(canGeneratePostcard);
+  const leads = ((data ?? []) as unknown as PostcardLead[]).filter((l) => isPostcardReady(l) && l.follow_up_status !== "Do not contact");
 
   return (
     <main className="min-h-screen bg-cream-100">

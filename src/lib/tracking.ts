@@ -4,14 +4,18 @@ export function trackingBaseUrl(): string {
   return (process.env.NEXT_PUBLIC_TRACKING_BASE_URL || DEFAULT_BASE).trim();
 }
 
-/** The unique URL printed in a lead's QR code, e.g. https://armandofundsloans.com/adu?lead=ANA-0001 */
-export function trackingUrl(leadCode: string): string {
+/**
+ * The public URL printed in a lead's QR code (V1.6.2):
+ *   https://armandofundsloans.com/adu?ref=<public_token>
+ * Uses the lead's random public_token — NEVER the sequential lead_code.
+ */
+export function trackingUrl(publicToken: string): string {
   const base = trackingBaseUrl();
   const joiner = base.includes("?") ? "&" : "?";
-  return `${base}${joiner}lead=${encodeURIComponent(leadCode)}`;
+  return `${base}${joiner}ref=${encodeURIComponent(publicToken)}`;
 }
 
-/** Path of this app's QR image route for a lead. */
-export function qrImagePath(leadCode: string, size = 600): string {
-  return `/api/qr/${encodeURIComponent(leadCode)}.png?size=${size}`;
+/** Path of this app's public QR image route for a lead (keyed by public_token). */
+export function qrImagePath(publicToken: string, size = 600): string {
+  return `/api/qr/${encodeURIComponent(publicToken)}.png?size=${size}`;
 }

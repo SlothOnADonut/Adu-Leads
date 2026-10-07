@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { ownerName } from "@/lib/format";
 import { trackingUrl } from "@/lib/tracking";
-import { canGeneratePostcard, POSTCARD_LEAD_COLUMNS, recipientFor, type PostcardLead, type PostcardStatus } from "./data";
+import { isPostcardReady, POSTCARD_LEAD_COLUMNS, recipientFor, type PostcardLead, type PostcardStatus } from "./data";
 
 /**
  * One exportable postcard. This is the hand-off format for a future
@@ -14,6 +14,11 @@ export interface PostcardExportItem {
   ownerName: string;
   recipient: { name: string; lines: string[] };
   mailingAddress: string;
+  mailingName: string;
+  mailingStreet: string;
+  mailingCity: string;
+  mailingState: string;
+  mailingZip: string;
   propertyAddress: string;
   frontAssetUrl: string;
   backAssetUrl: string;
@@ -32,12 +37,19 @@ export async function getPostcardExportItems(
 ): Promise<PostcardExportItem[]> {
   const rows: PostcardLead[] = [];
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await supabase
-      .from("leads")
-      .select(POSTCARD_LEAD_COLUMNS)
+    // Approved-only exports read the database view postcard_export_candidates, which
+    // already requires: approved postcard + approved image + complete mailing + not DNC.
+    const approvedOnly = filter.statuses.length === 1 && filter.statuses[0] === "approved";
+    const base = approvedOnly
+      ? supabase.from("postcard_export_candidates").select(POSTCARD_LEAD_COLUMNS)
+      : supabase
+          .from("leads")
+          .select(POSTCARD_LEAD_COLUMNS)
+          .in("postcard_status", filter.statuses)
+          .eq("mailing_complete", true)
+          .neq("follow_up_status", "Do not contact");
+    const { data, error } = await base
       .eq("campaign_id", filter.campaignId)
-      .in("postcard_status", filter.statuses)
-      .neq("follow_up_status", "Do not contact")
       .order("lead_code", { ascending: true })
       .range(from, from + 999);
     if (error) throw new Error(error.message);
@@ -46,20 +58,26 @@ export async function getPostcardExportItems(
     if (page.length < 1000) break;
   }
 
-  return rows.filter(canGeneratePostcard).map((l) => {
-    const r = recipientFor(l);
+  // Belt and braces: never export anything that isn't fully ready.
+  return rows.filter((l) => isPostcardReady(l) && l.follow_up_status !== "Do not contact").map((l) => {
+    const r = recipientFor(l)!;
     const asset = (side: string, extra = "") => `${origin}/api/postcards/${l.id}/${side}.svg${extra}`;
     return {
       leadId: l.id,
       leadCode: l.lead_code,
       ownerName: ownerName(l),
       recipient: { name: r.name, lines: r.lines },
-      mailingAddress: l.mailing_address ?? "",
+      mailingAddress: r.lines.join(", "),
+      mailingName: r.name,
+      mailingStreet: l.mailing_street ?? "",
+      mailingCity: l.mailing_city ?? "",
+      mailingState: (l.mailing_state ?? "").toUpperCase(),
+      mailingZip: l.mailing_zip ?? "",
       propertyAddress: [l.property_address, l.city, [l.state, l.zip].filter(Boolean).join(" ")].filter(Boolean).join(", "),
       frontAssetUrl: asset("front"),
       backAssetUrl: asset("back"),
       backWithAddressAssetUrl: asset("back", "?address=1"),
-      trackingUrl: trackingUrl(l.lead_code),
+      trackingUrl: trackingUrl(l.public_token),
       postcardStatus: l.postcard_status,
       postcardApprovedAt: l.postcard_approved_at,
       propertyImageUrl: l.property_image_url!,
@@ -73,6 +91,10 @@ const COLUMNS: [string, (i: PostcardExportItem) => string][] = [
   ["owner_name", (i) => i.ownerName],
   ["recipient_name", (i) => i.recipient.name],
   ["mailing_address", (i) => i.mailingAddress],
+  ["mailing_street", (i) => i.mailingStreet],
+  ["mailing_city", (i) => i.mailingCity],
+  ["mailing_state", (i) => i.mailingState],
+  ["mailing_zip", (i) => i.mailingZip],
   ["property_address", (i) => i.propertyAddress],
   ["front_asset_url", (i) => i.frontAssetUrl],
   ["back_asset_url", (i) => i.backAssetUrl],

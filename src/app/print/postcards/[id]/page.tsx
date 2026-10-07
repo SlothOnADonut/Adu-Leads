@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { canGeneratePostcard, loadPostcardLead, notReadyReason, renderPostcardSide } from "@/lib/postcards/data";
+import { canGeneratePostcard, isPostcardReady, loadPostcardLead, missingMailingFields, notReadyReason, renderPostcardSide } from "@/lib/postcards/data";
 import PrintToolbar from "../PrintToolbar";
 import "../print.css";
 
@@ -27,6 +27,12 @@ export default async function PrintOnePostcard({
   if (!lead) notFound();
   if (!canGeneratePostcard(lead)) {
     return <p className="p-8 text-sm">Postcard not available: {notReadyReason(lead)}.</p>;
+  }
+  if (lead.follow_up_status === "Do not contact") {
+    return <p className="p-8 text-sm">This lead is marked Do not contact — printing is disabled.</p>;
+  }
+  if (!isPostcardReady(lead)) {
+    return <p className="p-8 text-sm">Missing mailing information ({missingMailingFields(lead).join(", ")}). Complete it on the lead page before printing.</p>;
   }
 
   return (

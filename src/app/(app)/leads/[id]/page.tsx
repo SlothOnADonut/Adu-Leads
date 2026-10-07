@@ -12,6 +12,7 @@ import { DETAIL_ACTIONS } from "@/lib/quick-actions";
 import StatusForm from "./StatusForm";
 import NotesPanel from "./NotesPanel";
 import PropertyImagePanel from "./PropertyImagePanel";
+import MailingInfoForm from "./MailingInfoForm";
 import PostcardStatusBadge from "@/components/postcards/PostcardStatusBadge";
 import { getPropertyImageProviderInfo } from "@/lib/property-images/provider";
 import type { Lead, TrackingEvent } from "@/lib/types";
@@ -43,7 +44,16 @@ function eventDetail(e: TrackingEvent): string {
   const m = e.metadata || {};
   const parts: string[] = [];
   if (e.event_type === "status_changed" && m.from_status && m.to_status) parts.push(`${m.from_status} → ${m.to_status}`);
-  if (e.event_type === "cta_click" && m.cta) parts.push(`Button: ${String(m.cta)}`);
+  if (e.event_type === "cta_click" && m.cta) {
+    const label: Record<string, string> = {
+      explore_heloc: "Explore HELOC Options",
+      book_call: "Book a Call",
+      start_application: "Start Loan Application",
+      call_phone: "Call Armando",
+    };
+    const btn = typeof m.button === "string" ? label[m.button] ?? m.button : String(m.cta);
+    parts.push(`Button: ${btn}${typeof m.placement === "string" ? ` (${m.placement})` : ""}`);
+  }
   if (e.event_type === "note_added" && m.note) parts.push(`“${String(m.note).slice(0, 120)}”`);
   if (typeof m.user_agent === "string") {
     const ua = m.user_agent;
@@ -73,7 +83,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
   const lead = leadData as unknown as Lead;
   const events = (eventData ?? []) as unknown as TrackingEvent[];
   const campaign = campaigns.find((c) => c.id === lead.campaign_id) ?? null;
-  const url = trackingUrl(lead.lead_code);
+  const url = trackingUrl(lead.public_token); // public link uses the random token, never lead_code
   const today = todayISO();
 
   return (
@@ -140,6 +150,23 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
               </dl>
             </Section>
           </div>
+
+          <Section title="Postcard mailing information">
+            <MailingInfoForm
+              leadId={lead.id}
+              values={{
+                mailing_name: lead.mailing_name ?? null,
+                mailing_street: lead.mailing_street ?? null,
+                mailing_city: lead.mailing_city ?? null,
+                mailing_state: lead.mailing_state ?? null,
+                mailing_zip: lead.mailing_zip ?? null,
+                mailing_address: lead.mailing_address,
+                mailing_complete: !!lead.mailing_complete,
+                fallbackName: lead.first_name || lead.last_name || lead.owner_name_raw ? ownerName(lead) : null,
+                postcardStatus: lead.postcard_status ?? "not_ready",
+              }}
+            />
+          </Section>
 
           <Section title="Permit">
             <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -239,7 +266,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
             <div className="flex flex-col items-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={qrImagePath(lead.lead_code, 400)}
+                src={qrImagePath(lead.public_token, 400)}
                 alt={`QR code for ${lead.lead_code}`}
                 width={200}
                 height={200}
@@ -248,7 +275,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
               <div className="mt-3 w-full break-all rounded-lg bg-cream-100/70 px-3 py-2 font-mono text-xs">{url}</div>
               <div className="mt-3 flex gap-2">
                 <CopyButton text={url} label="Copy URL" />
-                <a href={qrImagePath(lead.lead_code, 1200)} download={`${lead.lead_code}.png`} className="btn-secondary btn-sm">
+                <a href={qrImagePath(lead.public_token, 1200)} download={`${lead.lead_code}.png`} className="btn-secondary btn-sm">
                   Download PNG
                 </a>
               </div>

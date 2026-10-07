@@ -85,7 +85,11 @@ export function applyLeadFilters(
   }
   if (params.q) {
     const s = cleanSearch(params.q);
-    if (s) {
+    const token = params.q.trim();
+    if (/^[A-Za-z0-9_-]{16}$/.test(token)) {
+      // exact public token (from a ?ref= link or Calendly utm_content)
+      q = q.or(`public_token.eq.${token},lead_code.ilike.%${s}%`);
+    } else if (s) {
       q = q.or(
         `lead_code.ilike.%${s}%,owner_name_raw.ilike.%${s}%,last_name.ilike.%${s}%,property_address.ilike.%${s}%,mailing_address.ilike.%${s}%,apn.ilike.%${s}%,permit_number.ilike.%${s}%`
       );

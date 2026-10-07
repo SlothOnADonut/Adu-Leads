@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { formatDateTime, fullPropertyAddress, ownerName } from "@/lib/format";
 import { trackingUrl } from "@/lib/tracking";
 import { sourceLabel } from "@/lib/property-images/types";
-import { canGeneratePostcard, loadPostcardLead, notReadyReason, recipientFor, renderPostcardSide } from "@/lib/postcards/data";
+import { canGeneratePostcard, isPostcardReady, loadPostcardLead, missingMailingFields, notReadyReason, recipientFor, renderPostcardSide } from "@/lib/postcards/data";
+import { disclosurePlaceholderActive } from "@/lib/postcards/content";
 import PostcardStatusBadge from "@/components/postcards/PostcardStatusBadge";
 import ApprovePostcardButton from "@/components/postcards/ApprovePostcardButton";
 import DownloadPostcardButton from "@/components/postcards/DownloadPostcardButton";
@@ -36,9 +37,12 @@ export default async function PostcardPreviewPage({
   const lead = await loadPostcardLead(supabase, id);
   if (!lead) notFound();
 
-  const ready = canGeneratePostcard(lead);
+  const drawable = canGeneratePostcard(lead); // approved image → preview allowed
+  const ready = isPostcardReady(lead); // + complete mailing → approve / download / print
+  const missing = missingMailingFields(lead);
+  const dnc = lead.follow_up_status === "Do not contact";
   const recipient = recipientFor(lead);
-  const url = trackingUrl(lead.lead_code);
+  const url = trackingUrl(lead.public_token);
   const backHref = lead.campaign_id ? `/postcards?campaign=${lead.campaign_id}` : "/postcards";
 
   return (
@@ -58,7 +62,25 @@ export default async function PostcardPreviewPage({
         </div>
       </div>
 
-      {!ready ? (
+      {drawable && missing.length > 0 && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <b>Missing mailing information</b> — {missing.join(", ")}. This preview is for design checking only: the postcard
+          can't be approved, downloaded, exported or printed until it's complete.{" "}
+          <Link href={`/leads/${lead.id}`} className="font-medium underline">Add mailing info on the lead page →</Link>
+        </div>
+      )}
+      {dnc && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+          This lead is marked <b>Do not contact</b> — it's excluded from all exports and print batches.
+        </div>
+      )}
+      {drawable && disclosurePlaceholderActive() && (
+        <p className="text-xs text-charcoal-light">
+          The dashed “PLACEHOLDER” box on the back is where your employer-approved disclosure goes (set it in <code>src/lib/postcards/content.ts</code>).
+        </p>
+      )}
+
+      {!drawable ? (
         <div className="card space-y-3 p-6 text-sm">
           <p className="font-medium">No postcard for this lead yet.</p>
           <p className="flex items-center gap-2 text-charcoal-light">
@@ -90,11 +112,17 @@ export default async function PostcardPreviewPage({
                 <Row label="Lead code">
                   <span className="font-mono">{lead.lead_code}</span> <span className="text-xs text-charcoal-light">(printed as “Ref” on both sides)</span>
                 </Row>
-                <Row label="Recipient">
-                  {recipient.name}
-                  <br />
-                  {recipient.lines.join(", ")}
-                  {recipient.usedPropertyAddress && <div className="mt-1 text-xs text-gold-dark">No mailing address — using the property address.</div>}
+                <Row label="Recipient (mailing)">
+                  {recipient ? (
+                    <>
+                      {recipient.name}
+                      <br />
+                      {recipient.lines.join(", ")}
+                    </>
+                  ) : (
+                    <span className="text-amber-800">Missing: {missing.join(", ")}</span>
+                  )}
+                  <Link href={`/leads/${lead.id}`} className="mt-1 block text-xs text-forest-600 hover:underline">Edit mailing info</Link>
                 </Row>
                 <Row label="QR opens">
                   <span className="break-all font-mono text-xs">{url}</span>
@@ -116,6 +144,7 @@ export default async function PostcardPreviewPage({
               </dl>
             </section>
 
+            {ready && !dnc ? (
             <section className="card space-y-2 p-4">
               <h2 className="card-title">Download</h2>
               <p className="text-xs text-charcoal-light">300-DPI PNG, 9×6 with 0.125″ bleed (2775 × 1875 px).</p>
@@ -130,6 +159,12 @@ export default async function PostcardPreviewPage({
                 <a href={`/print/postcards/${lead.id}`} target="_blank" rel="noopener" className="text-forest-600 hover:underline">Print / PDF</a>
               </div>
             </section>
+            ) : (
+              <section className="card p-4 text-sm text-charcoal-light">
+                <h2 className="card-title mb-1">Download</h2>
+                Downloads, export and printing unlock once the postcard is ready{dnc ? " (and the lead isn't Do not contact)" : ""}.
+              </section>
+            )}
           </aside>
         </div>
       )}

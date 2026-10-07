@@ -50,7 +50,7 @@ adu-leads/
 3. Open `supabase/schema.sql` from this folder, copy **everything**, paste it into the editor, click **Run**.
    You should see "Success. No rows returned."
    Then do the same with each file in `supabase/migrations/`, oldest first:
-   `2026-10-06_v1_1_safe_delete.sql`, then `2026-10-07_v1_2_property_images.sql`, then `2026-10-07_v1_4_postcards.sql`.
+   `2026-10-06_v1_1_safe_delete.sql`, then `2026-10-07_v1_2_property_images.sql`, then `2026-10-07_v1_4_postcards.sql`, then `2026-10-07_v1_5_mailing_readiness.sql`, then `2026-10-07_v1_6_2_public_tokens.sql`.
 4. (Optional but recommended) New query again → paste all of `supabase/seed.sql` → **Run**.
    This creates your real campaign **"Anaheim ADU – Wave 1"** plus 8 fake `DEMO-` leads so the dashboard isn't empty. Run it only once.
 5. **Turn off public sign-ups** (important — this is an internal tool):
@@ -101,14 +101,14 @@ npm run dev
 
 Open **http://localhost:3000** → sign in with the user you created.
 
-**Test QR tracking locally:** open `http://localhost:3000/adu?lead=DEMO-0004` in another tab, then open lead DEMO-0004 in the dashboard — the scan count goes up, a "Scanned QR code" event appears, and its status changes from *Postcard sent* to *Scanned QR*.
+**Test QR tracking locally:** open lead DEMO-0004 in the dashboard, copy its QR URL (`…/adu?ref=<token>`, V1.6.2), open it in another tab, then refresh the lead — the scan count goes up, a "Scanned QR code" event appears, and its status changes from *Postcard sent* to *Scanned QR*.
 
 ---
 
 ## 3. How QR tracking works
 
 ```
-Postcard QR  →  https://YOUR-SITE/adu?lead=ANA-0001
+Postcard QR  →  https://YOUR-SITE/adu?ref=<public_token>   (random, V1.6.2)
                     │
                     ▼
    /adu landing page (public, generic — shows NO homeowner info)
@@ -130,7 +130,7 @@ Security details:
 - `/api/track` always answers `{ok:true}` — it never reveals whether a code exists.
 - Anonymous visitors have **no** table access (Row Level Security). The only way to touch lead data publicly is the two narrow database functions above, and only the server can call them.
 - Link-preview bots (iMessage, Facebook, etc.) are ignored.
-- After logging, the `?lead=` code is removed from the address bar, so forwarded links don't count as new scans.
+- The `?ref=` token stays in the address bar so personalization survives a refresh; the 30-minute dedupe stops refreshes from counting as new scans.
 - Clicks on **Check HELOC Options / Book a Call / Call Armando** are logged as `cta_click` events too.
 
 ---
@@ -181,21 +181,19 @@ Security details:
 `NEXT_PUBLIC_TRACKING_BASE_URL=https://leads.armandofundsloans.com/adu`
 Works immediately with nothing else to connect.
 
-**Option B — Armando's main website:** keep `https://armandofundsloans.com/adu?lead=…` on the main site and have that page report the visit to this app. Add this to the main site's `/adu` page (and set `TRACKING_ALLOWED_ORIGINS` to the main site's address):
+**Option B — Armando's main website:** keep `https://armandofundsloans.com/adu?ref=…` on the main site and have that page report the visit to this app. Add this to the main site's `/adu` page (and set `TRACKING_ALLOWED_ORIGINS` to the main site's address):
 
 ```html
 <script>
   (function () {
-    var p = new URLSearchParams(location.search), lead = p.get("lead");
-    if (!lead) return;
+    var ref = new URLSearchParams(location.search).get("ref");
+    if (!ref) return;
     fetch("https://leads.armandofundsloans.com/api/track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       keepalive: true,
-      body: JSON.stringify({ lead: lead, referrer: document.referrer, page: location.pathname })
+      body: JSON.stringify({ ref: ref, referrer: document.referrer, page: location.pathname })
     });
-    p.delete("lead");
-    history.replaceState(null, "", location.pathname + (p.toString() ? "?" + p : ""));
   })();
 </script>
 ```
@@ -264,7 +262,7 @@ Workflow: **lead → approved property image → unique QR → postcard preview 
   lead code, then **Mark postcard approved**.
 - **Only leads with an Approved property image get a postcard.** If the image is replaced, un-approved, or the
   name/address on the card changes, the postcard automatically goes back to *Ready* (or *Not ready*). Approval is always a manual click.
-- The QR code is the lead's existing tracking link (`/adu?lead=ANA-0001`), so scans count exactly as before.
+- The QR code is the lead's tracking link (`/adu?ref=<public_token>` since V1.6.2), so scans count exactly as before.
 - **Exports:** 300-DPI PNG per side (made in your browser), self-contained SVG per side, **Print approved (PDF)** for a
   whole campaign, and a **manifest CSV**. “Do not contact” leads are always excluded.
 - **Size:** 9″ × 6″ with 0.125″ bleed (9.25″ × 6.25″ artwork). The back keeps an address area and a postage area clear
@@ -272,6 +270,40 @@ Workflow: **lead → approved property image → unique QR → postcard preview 
 - No print/mail provider is connected. The plug-in point is `src/lib/postcards/print-provider.ts`.
 
 Test with **TESTING-v1.4.md** first.
+
+### V1.5 — final design + mailing readiness
+- **Postcard Ready** now means: approved property image + image link + recipient name + mailing **street, city,
+  2-letter state and ZIP**. Anything less shows **Missing mailing information**. Those cards can still be previewed,
+  but they can't be approved, downloaded, exported or printed.
+- Mailing fields live on each lead page (**Postcard mailing information**). They are filled automatically from the
+  imported mailing address when it clearly reads `street, city, ST ZIP`. The property address is never used as a fallback.
+- Changing the image, recipient name, or any mailing field after approval sends the postcard back to *Ready*.
+  Notes, outreach, scans and follow-ups don't.
+- Exports and print batches read one database view, `postcard_export_candidates`: approved, complete and not Do Not Contact.
+- Copy is in `src/lib/postcards/content.ts`, and the concept artwork is in `src/lib/postcards/artwork.ts`.
+- **Employer disclosure:** set `EMPLOYER_DISCLOSURE` in `content.ts`. Until then a labeled placeholder box prints on the back.
+- Test with **TESTING-v1.5.md**.
+
+## Landing page (V1.6)
+
+`/adu` is the public page the postcard QR codes open (`/adu?ref=<public_token>`).
+- **Personalized when the code is valid:** the lead's **approved** property photo fills the hero, and a short
+  “You're already exploring…” band appears. Owner names are never shown. Invalid or unknown codes simply show the generic page.
+- **Tracking is unchanged:** the same visit/scan logging and 30-minute dedupe. Every button click is logged on the
+  lead's timeline with the button name and where it sits on the page. Calendly links carry `utm_content=<lead code>`.
+- **Settings:** `NEXT_PUBLIC_HELOC_URL`, `NEXT_PUBLIC_BOOKING_URL`, `NEXT_PUBLIC_APPLICATION_URL`.
+- **Photos, headshot, compliance text and the property-address switch:** `src/lib/landing/config.ts`. Photos go in `public/landing/`.
+- Test with **TESTING-v1.6.md**.
+
+## Public tokens (V1.6.2)
+
+Public links never contain the sequential lead code. Each lead has a random 16-character `public_token`, and
+postcards, QR images and exports all use `/adu?ref=<public_token>`.
+- `lead_code` (ANA-0001) is still used everywhere inside the app, and it's printed as the small "Ref" on the card so callers can quote it.
+- `?lead=ANA-0001` no longer personalizes or tracks anything, and `/api/qr/ANA-0001.png` is rejected.
+- Tokens are issued by the database, never change, and are never reused, even after a lead is deleted.
+- Search a token on the Leads page to find its lead (e.g. from a Calendly booking's `utm_content`).
+- Migration: `2026-10-07_v1_6_2_public_tokens.sql`. Test: `supabase/tests/v1_6_2_public_tokens_test.sql` and **TESTING-v1.6.2.md**.
 
 ## Everyday use
 

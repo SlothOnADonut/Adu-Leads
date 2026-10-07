@@ -3,11 +3,12 @@ import type { QrMatrix } from "./render";
 import { trackingUrl } from "@/lib/tracking";
 
 /**
- * QR matrix for a lead — encodes the EXISTING tracking URL
- * (e.g. https://armandofundsloans.com/adu?lead=ANA-0001). No new tracking system.
+ * QR matrix for a lead — encodes the lead's public tracking URL
+ * (V1.6.2: https://armandofundsloans.com/adu?ref=<public_token>, never the lead code).
  */
-export function leadQrMatrix(leadCode: string): { url: string; qr: QrMatrix } {
-  const url = trackingUrl(leadCode);
+export function leadQrMatrix(publicToken: string): { url: string; qr: QrMatrix } {
+  if (!publicToken) throw new Error("Lead has no public token — run the V1.6.2 migration");
+  const url = trackingUrl(publicToken);
   const code = QRCode.create(url, { errorCorrectionLevel: "M" });
   const size = code.modules.size;
   const modules: boolean[] = new Array(size * size);

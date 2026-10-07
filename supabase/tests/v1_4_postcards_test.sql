@@ -1,5 +1,6 @@
 -- =====================================================================
 -- V1.4 postcard SELF-TEST (throwaway — changes NOTHING permanently)
+-- (Updated in V1.5: test leads now include mailing addresses, which V1.5 requires.)
 -- Paste into Supabase → SQL Editor → Run, AFTER the V1.4 migration.
 -- Success = "ALL V1.4 POSTCARD CHECKS PASSED". Everything is rolled back.
 -- =====================================================================
@@ -24,9 +25,9 @@ begin
 
   insert into public.campaigns (name, city) values ('ZZ POSTCARD TEST', 'Anaheim') returning id into v_camp;
   perform public.import_leads('[
-    {"owner_name_raw":"PC ONE",   "property_address":"1 Card St", "city":"Anaheim", "apn":"PC-APN-1", "permit_number":"PC-P-1"},
-    {"owner_name_raw":"PC TWO",   "property_address":"2 Card St", "city":"Anaheim", "apn":"PC-APN-2", "permit_number":"PC-P-2"},
-    {"owner_name_raw":"PC THREE", "property_address":"3 Card St", "city":"Anaheim", "apn":"PC-APN-3", "permit_number":"PC-P-3"}
+    {"owner_name_raw":"PC ONE",   "mailing_address":"1 Mail Rd, Anaheim, CA 92801", "property_address":"1 Card St", "city":"Anaheim", "apn":"PC-APN-1", "permit_number":"PC-P-1"},
+    {"owner_name_raw":"PC TWO",   "mailing_address":"2 Mail Rd, Anaheim, CA 92801", "property_address":"2 Card St", "city":"Anaheim", "apn":"PC-APN-2", "permit_number":"PC-P-2"},
+    {"owner_name_raw":"PC THREE", "mailing_address":"3 Mail Rd, Anaheim, CA 92801", "property_address":"3 Card St", "city":"Anaheim", "apn":"PC-APN-3", "permit_number":"PC-P-3"}
   ]'::jsonb, v_camp);
   select id into v1 from public.leads where apn = 'PC-APN-1';
   select id into v2 from public.leads where apn = 'PC-APN-2';
@@ -89,7 +90,7 @@ begin
 
   -- CHECK 10: address change after approval → back to ready
   perform public.approve_postcard(v1);
-  update public.leads set mailing_address = '99 Changed Ave' where id = v1;
+  update public.leads set mailing_address = '99 Changed Ave, Anaheim, CA 92801' where id = v1;
   if (select postcard_status from public.leads where id = v1) <> 'ready' then raise exception 'CHECK 10 FAILED: address change kept approval'; end if;
 
   -- CHECK 11: un-approving image → not_ready
