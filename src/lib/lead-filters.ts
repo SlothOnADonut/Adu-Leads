@@ -1,5 +1,6 @@
 import { addDays, formatDate } from "./format";
 import type { Campaign } from "./types";
+import { isImageStatus, PROPERTY_IMAGE_STATUS_LABELS } from "./property-images/types";
 
 /**
  * The Leads page filters. This ONE function is used both to show the table
@@ -17,10 +18,11 @@ export type LeadFilterParams = {
   mailing?: string;
   q?: string;
   archived?: string; // "1" = include leads from archived campaigns
+  img?: string; // property image status (V1.2)
 };
 
 export const FILTER_KEYS: (keyof LeadFilterParams)[] = [
-  "campaign", "city", "min", "scanned", "status", "sent", "due", "mailing", "q", "archived",
+  "campaign", "city", "min", "scanned", "status", "sent", "due", "mailing", "q", "archived", "img",
 ];
 
 /** Keeps only known filter keys with non-empty string values. */
@@ -77,6 +79,10 @@ export function applyLeadFilters(
   if (params.due === "week") q = q.lte("next_follow_up_date", addDays(today, 7));
   if (params.mailing === "same") q = q.eq("mailing_differs", false);
   if (params.mailing === "different") q = q.eq("mailing_differs", true);
+  if (params.img) {
+    // unknown value → match nothing (never silently widen a filter)
+    q = isImageStatus(params.img) ? q.eq("property_image_status", params.img) : q.eq("property_image_status", "__none__");
+  }
   if (params.q) {
     const s = cleanSearch(params.q);
     if (s) {
@@ -109,6 +115,7 @@ export function describeFilters(params: LeadFilterParams, campaigns: Campaign[],
   if (params.due === "week") out.push(`Follow-up: due by ${formatDate(addDays(today, 7))}`);
   if (params.mailing === "same") out.push("Occupancy: likely owner-occupied");
   if (params.mailing === "different") out.push("Occupancy: different mailing address");
+  if (params.img) out.push(`Property image: ${isImageStatus(params.img) ? PROPERTY_IMAGE_STATUS_LABELS[params.img] : params.img}`);
   if (params.q) out.push(`Search: “${cleanSearch(params.q)}”`);
   if (params.archived === "1" && !params.campaign) out.push("Including archived campaigns");
   return out;

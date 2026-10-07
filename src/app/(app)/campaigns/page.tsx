@@ -4,6 +4,17 @@ import { campaignStats, fetchAllLeads, fetchCampaigns, LEAD_LIST_COLUMNS } from 
 import { formatDate, formatPercent, todayISO } from "@/lib/format";
 import CampaignForm from "./CampaignForm";
 import CampaignRowActions from "./CampaignRowActions";
+import { PROPERTY_IMAGE_STATUS_LABELS, type PropertyImageStatus } from "@/lib/property-images/types";
+
+/** Image counts per campaign: the everyday four, plus any others that exist. */
+function imageCounts(leads: { property_image_status: PropertyImageStatus; postcard_image_ready: boolean }[]) {
+  const by: Partial<Record<PropertyImageStatus, number>> = {};
+  for (const l of leads) by[l.property_image_status] = (by[l.property_image_status] ?? 0) + 1;
+  const ready = leads.filter((l) => l.postcard_image_ready).length;
+  return { by, ready, total: leads.length };
+}
+
+const SUMMARY_ORDER: PropertyImageStatus[] = ["approved", "needs_review", "missing", "rejected", "fetched", "manual"];
 
 export const metadata = { title: "Campaigns · ADU Lead Tracker" };
 
@@ -84,6 +95,38 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
               ))}
             </div>
             <div className="px-5 py-3">
+              {(() => {
+                const img = imageCounts(leads.filter((l) => l.campaign_id === c.id));
+                const pct = img.total > 0 ? Math.round((img.ready / img.total) * 100) : 0;
+                return (
+                  <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg bg-cream-100/60 px-3 py-2 text-sm">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <span className="text-xs font-medium tracking-wide text-charcoal-light uppercase">Property images</span>
+                      {SUMMARY_ORDER.filter((st) => st === "approved" || st === "needs_review" || st === "missing" || (img.by[st] ?? 0) > 0).map((st) => (
+                        <Link
+                          key={st}
+                          href={`/leads?campaign=${c.id}&img=${st}`}
+                          className="tabular-nums text-charcoal hover:text-forest-700 hover:underline"
+                        >
+                          <b>{img.by[st] ?? 0}</b> {PROPERTY_IMAGE_STATUS_LABELS[st].toLowerCase()}
+                        </Link>
+                      ))}
+                      <Link href={`/property-images?campaign=${c.id}`} className="text-xs font-medium text-forest-600 hover:underline">
+                        Review →
+                      </Link>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium tracking-wide text-charcoal-light uppercase">Postcard image readiness</span>
+                      <Link href={`/leads?campaign=${c.id}&img=approved`} className="tabular-nums hover:underline">
+                        <b>{img.ready}</b> / {img.total} ready
+                      </Link>
+                      <span className="h-1.5 w-20 overflow-hidden rounded-full bg-cream-200" aria-hidden>
+                        <span className="block h-full rounded-full bg-forest-500" style={{ width: `${pct}%` }} />
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
               {c.notes && <p className="mb-2 text-sm text-charcoal-light">{c.notes}</p>}
               <CampaignRowActions campaign={c} today={today} />
             </div>

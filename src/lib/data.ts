@@ -61,4 +61,4 @@ export function campaignStats(campaigns: Campaign[], leads: Lead[]): CampaignWit
 }
 
 export const LEAD_LIST_COLUMNS =
-  "id, lead_code, first_name, last_name, owner_name_raw, mailing_address, property_address, city, state, zip, permit_issue_date, job_valuation, final_priority_score, campaign_id, postcard_sent_date, qr_scan_count, last_qr_scan_at, call_status, text_status, appointment_status, application_status, funded_status, follow_up_status, next_follow_up_date, last_activity_at, mailing_differs";
+  "id, lead_code, first_name, last_name, owner_name_raw, mailing_address, property_address, city, state, zip, permit_issue_date, job_valuation, final_priority_score, campaign_id, postcard_sent_date, qr_scan_count, last_qr_scan_at, call_status, text_status, appointment_status, application_status, funded_status, follow_up_status, next_follow_up_date, last_activity_at, mailing_differs, property_image_status, postcard_image_ready";

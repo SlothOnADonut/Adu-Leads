@@ -39,3 +39,36 @@ export function ScoreBadge({ score }: { score: number | null }) {
     </span>
   );
 }
+
+const IMAGE_STYLES: Record<string, string> = {
+  approved: "bg-forest-50 text-forest-700 border-forest-200",
+  needs_review: "bg-gold-light text-gold-dark border-gold/40",
+  fetched: "bg-gold-light text-gold-dark border-gold/40",
+  manual: "bg-gold-light text-gold-dark border-gold/40",
+  missing: "bg-cream-100 text-charcoal-light border-cream-300",
+  rejected: "bg-rose-50 text-rose-700 border-rose-200",
+};
+
+const IMAGE_LABELS: Record<string, string> = {
+  approved: "Approved",
+  needs_review: "Needs review",
+  fetched: "Fetched",
+  manual: "Manual",
+  missing: "Missing",
+  rejected: "Rejected",
+};
+
+/** Compact property-image status chip (no image rendered). */
+export function ImageStatusBadge({ status }: { status: string | null | undefined }) {
+  const s = status || "missing";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+        IMAGE_STYLES[s] ?? IMAGE_STYLES.missing
+      }`}
+    >
+      <span className={`h-1.5 w-1.5 rounded-full ${s === "approved" ? "bg-forest-500" : s === "rejected" ? "bg-rose-400" : s === "missing" ? "bg-cream-300" : "bg-gold"}`} />
+      {IMAGE_LABELS[s] ?? s}
+    </span>
+  );
+}

@@ -1,4 +1,5 @@
 import type { FollowUpStatus } from "./constants";
+import type { PropertyImageStatus } from "./property-images/types";
 
 export interface Campaign {
   id: string;
@@ -55,6 +56,14 @@ export interface Lead {
   notes: string | null;
   last_activity_at: string | null;
   mailing_differs: boolean | null;
+  // V1.2 property image
+  property_image_url: string | null;
+  property_image_source: string | null;
+  property_image_status: PropertyImageStatus;
+  property_image_notes: string | null;
+  property_image_updated_at: string | null;
+  /** Computed by the database: true only when property_image_status = approved. */
+  postcard_image_ready: boolean;
   created_at: string;
   updated_at: string;
 }

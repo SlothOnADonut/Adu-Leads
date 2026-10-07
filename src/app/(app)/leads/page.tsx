@@ -5,7 +5,8 @@ import { FOLLOW_UP_STATUSES } from "@/lib/constants";
 import { formatCurrency, formatDate, ownerName, timeAgo, todayISO } from "@/lib/format";
 import { applyLeadFilters, describeFilters, hasNarrowingFilter, pickFilters, type LeadFilterParams } from "@/lib/lead-filters";
 import { BulkBar, RowCheckbox, SelectAllCheckbox, SelectionProvider } from "./LeadSelection";
-import StatusBadge, { ScoreBadge } from "@/components/StatusBadge";
+import StatusBadge, { ImageStatusBadge, ScoreBadge } from "@/components/StatusBadge";
+import { PROPERTY_IMAGE_FILTER_ORDER, PROPERTY_IMAGE_STATUS_LABELS } from "@/lib/property-images/types";
 import type { Lead } from "@/lib/types";
 
 export const metadata = { title: "Leads · ADU Lead Tracker" };
@@ -162,6 +163,15 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
           </select>
         </div>
         <div>
+          <label className="label" htmlFor="img">Property image</label>
+          <select id="img" name="img" defaultValue={params.img ?? ""} className="input">
+            <option value="">All</option>
+            {PROPERTY_IMAGE_FILTER_ORDER.map((s) => (
+              <option key={s} value={s}>{PROPERTY_IMAGE_STATUS_LABELS[s]}</option>
+            ))}
+          </select>
+        </div>
+        <div>
           <label className="label" htmlFor="mailing">Occupancy</label>
           <select id="mailing" name="mailing" defaultValue={params.mailing ?? ""} className="input">
             <option value="">Any</option>
@@ -209,6 +219,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                 <th>Postcard</th>
                 <SortTh k="scans" right>Scans</SortTh>
                 <th>Status</th>
+                <th>Image</th>
                 <SortTh k="followup">Next follow-up</SortTh>
                 <SortTh k="activity">Last activity</SortTh>
               </tr>
@@ -216,7 +227,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
             <tbody>
               {leads.length === 0 && (
                 <tr>
-                  <td colSpan={13} className="py-10 text-center text-charcoal-light">
+                  <td colSpan={14} className="py-10 text-center text-charcoal-light">
                     No leads found. {hasFilters ? "Try clearing filters." : <Link href="/import" className="text-forest-700 underline">Import your first CSV</Link>}
                   </td>
                 </tr>
@@ -269,6 +280,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                     {l.qr_scan_count > 0 ? <span className="font-semibold text-gold-dark">{l.qr_scan_count}</span> : <span className="text-charcoal-light">0</span>}
                   </td>
                   <td><StatusBadge status={l.follow_up_status} /></td>
+                  <td><ImageStatusBadge status={l.property_image_status} /></td>
                   <td className="whitespace-nowrap text-xs">
                     {l.next_follow_up_date ? (
                       <span className={l.next_follow_up_date < today ? "font-medium text-red-700" : l.next_follow_up_date === today ? "font-medium text-gold-dark" : ""}>

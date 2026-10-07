@@ -49,7 +49,8 @@ adu-leads/
 2. In the left sidebar click **SQL Editor** → **New query**.
 3. Open `supabase/schema.sql` from this folder, copy **everything**, paste it into the editor, click **Run**.
    You should see "Success. No rows returned."
-   Then do the same with each file in `supabase/migrations/` (currently one: `2026-10-06_v1_1_safe_delete.sql`).
+   Then do the same with each file in `supabase/migrations/`, oldest first:
+   `2026-10-06_v1_1_safe_delete.sql`, then `2026-10-07_v1_2_property_images.sql`.
 4. (Optional but recommended) New query again → paste all of `supabase/seed.sql` → **Run**.
    This creates your real campaign **"Anaheim ADU – Wave 1"** plus 8 fake `DEMO-` leads so the dashboard isn't empty. Run it only once.
 5. **Turn off public sign-ups** (important — this is an internal tool):
@@ -214,6 +215,7 @@ Works immediately with nothing else to connect.
 | Compliance review of landing page copy (company NMLS #, licensing states, Equal Housing logo/wording) | `src/app/adu/page.tsx` |
 | Real homeowner data / enrichment in your CSV | Your data source |
 | Postcard design + printing / mail-merge service | Canva, Lob, print shop, etc. |
+| Automatic property photos (licensed imagery provider) — not connected in V1.2 | `src/lib/property-images/provider.ts` |
 
 ---
 
@@ -230,6 +232,24 @@ Works immediately with nothing else to connect.
   The dialog lists the filters and the exact count; if the count changes before you confirm, nothing is deleted.
 
 Before using these on real data, run through **TESTING-v1.1.md**.
+
+## Property images (V1.2)
+
+Every lead has a property photo slot with a status: **Missing → Needs review → Approved** (or **Rejected**).
+**Postcard image ready** is automatically *Yes* only when the photo is **Approved**.
+
+- **Lead page → Property image**: add/replace an image link, upload a photo (JPG/PNG/WebP, max 4 MB), Approve / Reject / Needs review, and image notes.
+- **Property Images page**: pick a campaign and review every photo as a grid of cards. The status chips at the top show counts.
+- **Leads page**: compact *Image* column and a *Property image* filter.
+- **Campaigns page**: counts per status (click to filter) and **Postcard image readiness: X / Y ready**.
+- **Approved photos are locked.** Imports, scripts and future automatic fetches can't change them. To change one, use
+  *Replace* and tick “Replace approved image”, which puts the lead back to *Needs review*.
+- **No image provider is connected yet.** The “Fetch property images” button stays disabled. The plug-in point is
+  `src/lib/property-images/provider.ts`.
+- Uploaded photos go to a Supabase Storage bucket called `property-images`. Anyone with a photo's exact random link
+  can open it (printers need that), but nobody can list the bucket.
+
+Test it first with **TESTING-v1.2.md**.
 
 ## Everyday use
 

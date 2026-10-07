@@ -11,6 +11,7 @@ import CopyButton from "@/components/CopyButton";
 import { DETAIL_ACTIONS } from "@/lib/quick-actions";
 import StatusForm from "./StatusForm";
 import NotesPanel from "./NotesPanel";
+import PropertyImagePanel from "./PropertyImagePanel";
 import type { Lead, TrackingEvent } from "@/lib/types";
 
 export const metadata = { title: "Lead · ADU Lead Tracker" };
@@ -218,6 +219,10 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
         </div>
 
         <div className="space-y-5">
+          <Section title="Property image">
+            <PropertyImagePanel lead={lead} />
+          </Section>
+
           <Section title="Status">
             <StatusForm lead={lead} campaigns={campaignOptions(campaigns, lead.campaign_id)} />
           </Section>
