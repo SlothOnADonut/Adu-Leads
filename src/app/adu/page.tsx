@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { BRAND } from "@/lib/constants";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { COMPLIANCE, DEFAULT_CITY, LANDING_IMAGES, LANDING_LINKS, OFFICE } from "@/lib/landing/config";
@@ -22,16 +22,19 @@ const OPTIONS = [
   {
     key: "garage" as const,
     title: "Garage Conversion",
+    image: "/landing/garage-conversion.png",
     points: ["Uses existing garage space", "Can create additional living space", "May provide flexibility for family or rental use"],
   },
   {
     key: "detached" as const,
     title: "Detached Backyard ADU",
+    image: "/landing/detached-adu.png",
     points: ["Separate private structure", "Useful for family, guests, or potential rental use", "Depends on lot conditions and local requirements"],
   },
   {
     key: "junior" as const,
     title: "Junior ADU / Addition",
+    image: "/landing/junior-adu.png",
     points: ["Smaller flexible option", "Can work with existing home layouts", "Requirements vary by property"],
   },
 ];
@@ -59,15 +62,15 @@ const BTN_DARK = `${BTN} bg-forest-900 text-cream hover:bg-forest-800`;
 function Placeholder({ label }: { label: string }) {
   return (
     <div className="rounded-md border border-dashed border-cream/30 px-3 py-2 text-[11px] font-semibold tracking-wide text-cream/55 uppercase">
-      Placeholder — {label}
+      Placeholder â€” {label}
     </div>
   );
 }
 
 export default async function AduLandingPage({ searchParams }: { searchParams: Promise<{ ref?: string | string[] }> }) {
-  // Never throw on bad input: any problem → generic page.
-  // V1.6.2: personalization + tracking come ONLY from the random public token (?ref=…).
-  // A sequential ?lead=ANA-0001 is ignored → generic page.
+  // Never throw on bad input: any problem â†’ generic page.
+  // V1.6.2: personalization + tracking come ONLY from the random public token (?ref=â€¦).
+  // A sequential ?lead=ANA-0001 is ignored â†’ generic page.
   let rawRef: unknown = null;
   try {
     const sp = await searchParams;
@@ -75,12 +78,12 @@ export default async function AduLandingPage({ searchParams }: { searchParams: P
   } catch {
     rawRef = null;
   }
-  const publicToken = normalizePublicToken(rawRef); // well-formed token → visit tracking (server re-checks it)
+  const publicToken = normalizePublicToken(rawRef); // well-formed token â†’ visit tracking (server re-checks it)
   const result = await loadLandingLeadWithReason(rawRef, () => createAdminClient() as unknown as LeadLookupClient);
   const lead: LandingLead | null = result.lead;
   if (process.env.NODE_ENV !== "production" && result.reason !== "no_code") {
-    // Dev-only diagnostics (code + reason only — no names, no addresses).
-    console.info(`[adu] ref=${publicToken ? `${publicToken.slice(0, 4)}…` : "(invalid)"} → ${result.reason}${result.detail ? ` (${result.detail})` : ""}`);
+    // Dev-only diagnostics (code + reason only â€” no names, no addresses).
+    console.info(`[adu] ref=${publicToken ? `${publicToken.slice(0, 4)}â€¦` : "(invalid)"} â†’ ${result.reason}${result.detail ? ` (${result.detail})` : ""}`);
   }
 
   const city = (lead?.city || DEFAULT_CITY).toUpperCase();
@@ -104,7 +107,7 @@ export default async function AduLandingPage({ searchParams }: { searchParams: P
           <div className="min-w-0 leading-tight">
             <div className="truncate font-serif text-[17px] font-semibold">{BRAND.name}</div>
             <div className="truncate text-[11px] text-cream/65">
-              {BRAND.title} · NMLS {BRAND.nmls}
+              {BRAND.title} Â· NMLS {BRAND.nmls}
             </div>
           </div>
           <CtaButton
@@ -171,11 +174,11 @@ export default async function AduLandingPage({ searchParams }: { searchParams: P
                   {...cta("hero")}
                   className="mt-4 inline-flex min-h-11 items-center gap-2 text-[15px] font-semibold text-cream hover:text-cta"
                 >
-                  <IconPhone className="h-4 w-4 text-cta" /> Call Armando · {BRAND.phone}
+                  <IconPhone className="h-4 w-4 text-cta" /> Call Armando Â· {BRAND.phone}
                 </CtaButton>
 
                 <div className="mt-6 border-t border-white/10 pt-4 text-xs leading-relaxed text-cream/65">
-                  <span className="font-semibold text-cream/85">{BRAND.name}</span> · {BRAND.title} · NMLS {BRAND.nmls}
+                  <span className="font-semibold text-cream/85">{BRAND.name}</span> Â· {BRAND.title} Â· NMLS {BRAND.nmls}
                 </div>
               </div>
             </div>
@@ -210,7 +213,7 @@ export default async function AduLandingPage({ searchParams }: { searchParams: P
             {OPTIONS.map((o, i) => (
               <article key={o.key} className="group overflow-hidden rounded-2xl border border-cream-200 bg-white shadow-sm transition-shadow hover:shadow-md">
                 <div className="relative aspect-[4/3] overflow-hidden">
-                  <LandingImage src={LANDING_IMAGES[o.key]} alt={`${o.title} example`} sizes="(min-width: 768px) 33vw, 100vw" className="transition-transform duration-500 group-hover:scale-[1.03]" />
+                  <LandingImage src={o.image} alt={`${o.title} example`} sizes="(min-width: 768px) 33vw, 100vw" className="transition-transform duration-500 group-hover:scale-[1.03]" />
                   <span className="absolute top-3 left-3 rounded-full bg-night/80 px-2.5 py-1 text-[10px] font-bold tracking-[0.15em] text-cream">CONCEPT 0{i + 1}</span>
                 </div>
                 <div className="p-5">
@@ -302,7 +305,7 @@ export default async function AduLandingPage({ searchParams }: { searchParams: P
                 <div className="text-xs font-bold tracking-[0.2em] text-gold-dark">YOUR LOCAL LOAN OFFICER</div>
                 <h2 className="mt-1 font-serif text-3xl font-semibold text-forest-900">{BRAND.name}</h2>
                 <p className="mt-1 text-[15px] text-charcoal-light">
-                  {BRAND.title} · NMLS {BRAND.nmls}
+                  {BRAND.title} Â· NMLS {BRAND.nmls}
                 </p>
                 <CtaButton
                   href={BRAND.phoneHref}
@@ -411,3 +414,4 @@ export default async function AduLandingPage({ searchParams }: { searchParams: P
     </div>
   );
 }
+
