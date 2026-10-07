@@ -12,6 +12,8 @@ import { DETAIL_ACTIONS } from "@/lib/quick-actions";
 import StatusForm from "./StatusForm";
 import NotesPanel from "./NotesPanel";
 import PropertyImagePanel from "./PropertyImagePanel";
+import PostcardStatusBadge from "@/components/postcards/PostcardStatusBadge";
+import { getPropertyImageProviderInfo } from "@/lib/property-images/provider";
 import type { Lead, TrackingEvent } from "@/lib/types";
 
 export const metadata = { title: "Lead · ADU Lead Tracker" };
@@ -182,6 +184,12 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
                 </div>
                 <Field label="Postcard sent">{formatDate(lead.postcard_sent_date)}</Field>
                 <Field label="Postcard version">{campaign?.postcard_version}</Field>
+                <Field label="Postcard">
+                  <Link href={`/postcards/${lead.id}`} className="inline-flex items-center gap-2 hover:underline">
+                    <PostcardStatusBadge status={lead.postcard_status ?? "not_ready"} />
+                    <span className="text-xs text-forest-600">Preview →</span>
+                  </Link>
+                </Field>
                 <Field label="QR scans">{lead.qr_scan_count}</Field>
                 <Field label="Page visits">{lead.landing_page_visit_count}</Field>
                 <Field label="First scan">{formatDateTime(lead.first_qr_scan_at)}</Field>
@@ -220,7 +228,7 @@ export default async function LeadDetailPage({ params }: { params: Promise<{ id:
 
         <div className="space-y-5">
           <Section title="Property image">
-            <PropertyImagePanel lead={lead} />
+            <PropertyImagePanel lead={lead} providerName={getPropertyImageProviderInfo()?.name ?? null} />
           </Section>
 
           <Section title="Status">

@@ -1,16 +1,15 @@
+import "server-only";
+import { createNearmapProvider } from "./nearmap";
+
 /**
  * Property image providers — the plug-in point for automatic house photos.
  *
- * V1.2: NO provider is connected. getPropertyImageProvider() returns null,
- * and the "Fetch property images" button stays disabled. Nothing here calls
- * any external service.
+ * SERVER ONLY. Providers hold secret API keys, so this module must never be
+ * imported by a "use client" component (the "server-only" import enforces it).
  *
- * To add one later (e.g. an aerial/street imagery vendor you have a licence
- * for), create a file that implements PropertyImageProvider, return it from
- * getPropertyImageProvider(), and save results with
- * set_property_image(lead_id, 'set_url', url, provider.id).
- * The database will refuse to overwrite an APPROVED image unless the user
- * explicitly chose Replace, so a bulk fetch can never clobber approved photos.
+ * To add another vendor later: implement PropertyImageProvider in its own
+ * file and return it from getPropertyImageProvider(). Everything else (the
+ * approval lock, storage, review workflow, bulk UI) stays the same.
  */
 
 export interface PropertyAddress {
@@ -18,37 +17,58 @@ export interface PropertyAddress {
   city: string | null;
   state: string | null;
   zip: string | null;
-  apn?: string | null;
+  country?: "US" | "AU";
 }
 
-export interface PropertyImageResult {
-  /** Publicly reachable image URL (or a URL in our own storage bucket). */
-  url: string;
-  /** Saved as property_image_source, e.g. "nearmap". */
-  source: string;
-  /** Optional details for the reviewer (capture date, licence notes…). */
-  notes?: string;
-  capturedAt?: string;
-}
+export type PropertyImageFetchResult =
+  | {
+      kind: "found";
+      /** Image file contents — stored in our own Supabase bucket. */
+      bytes: Uint8Array;
+      contentType: string;
+      extension: string;
+      /** Saved as property_image_source, e.g. "nearmap". */
+      source: string;
+      /** Short line for the reviewer: capture date, matched address, confidence. */
+      note: string;
+      capturedAt?: string;
+    }
+  | { kind: "not_found"; reason: string }
+  | {
+      kind: "error";
+      reason: string;
+      /** true = config problem (bad key, no access); stop a bulk run. */
+      fatal?: boolean;
+    };
 
 export interface PropertyImageProvider {
   /** Short id saved as the image source. */
   readonly id: string;
   /** Human-readable name shown in the UI. */
   readonly name: string;
-  /** Returns an image for the address, or null if the provider has none. */
-  fetchImage(address: PropertyAddress): Promise<PropertyImageResult | null>;
+  /** Finds the best available image for an address. Never throws. */
+  fetchImage(address: PropertyAddress): Promise<PropertyImageFetchResult>;
 }
 
-/** The connected provider, or null when none is configured (V1.2: always null). */
+/** The connected provider, or null when none is configured. */
 export function getPropertyImageProvider(): PropertyImageProvider | null {
+  const nearmapKey = process.env.NEARMAP_API_KEY?.trim();
+  if (nearmapKey) return createNearmapProvider(nearmapKey);
   return null;
 }
 
-/**
- * Rule every future automated fetch must follow: only fill leads that have
- * no usable image. Approved (and already-under-review) images are skipped.
- */
+/** Safe-to-share description of the provider (no secrets) for the UI. */
+export function getPropertyImageProviderInfo(): { id: string; name: string } | null {
+  const p = getPropertyImageProvider();
+  return p ? { id: p.id, name: p.name } : null;
+}
+
+/** Bulk fetches only fill leads that have no image at all. */
 export function shouldAutoFetch(status: string): boolean {
-  return status === "missing" || status === "rejected";
+  return status === "missing";
+}
+
+/** A single, user-requested fetch may fill any lead whose image is NOT approved. */
+export function canFetchSingle(status: string): boolean {
+  return status !== "approved";
 }

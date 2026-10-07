@@ -64,6 +64,9 @@ export interface Lead {
   property_image_updated_at: string | null;
   /** Computed by the database: true only when property_image_status = approved. */
   postcard_image_ready: boolean;
+  // V1.4 postcard
+  postcard_status?: "not_ready" | "ready" | "approved";
+  postcard_approved_at?: string | null;
   created_at: string;
   updated_at: string;
 }

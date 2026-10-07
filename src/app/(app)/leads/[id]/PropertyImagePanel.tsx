@@ -6,6 +6,7 @@ import { sourceLabel } from "@/lib/property-images/types";
 import { formatDateTime } from "@/lib/format";
 import { ImageStatusBadge } from "@/components/StatusBadge";
 import PropertyImageReviewButtons from "@/components/PropertyImageReviewButtons";
+import FetchOneImageButton from "@/components/FetchOneImageButton";
 import type { Lead } from "@/lib/types";
 
 type ImageLead = Pick<
@@ -19,7 +20,7 @@ type ImageLead = Pick<
   | "postcard_image_ready"
 >;
 
-export default function PropertyImagePanel({ lead }: { lead: ImageLead }) {
+export default function PropertyImagePanel({ lead, providerName }: { lead: ImageLead; providerName?: string | null }) {
   const [mode, setMode] = useState<"none" | "url" | "upload">("none");
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
@@ -100,6 +101,9 @@ export default function PropertyImagePanel({ lead }: { lead: ImageLead }) {
         <button type="button" onClick={() => { setMode(mode === "upload" ? "none" : "upload"); setMessage(null); }} className="btn-ghost btn-sm">
           Upload photo
         </button>
+        {providerName && (
+          <FetchOneImageButton leadId={lead.id} providerName={providerName} status={lead.property_image_status} hasImage={hasImage} />
+        )}
       </div>
 
       {mode === "url" && (

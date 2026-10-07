@@ -2,7 +2,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { campaignOptions, fetchCampaigns } from "@/lib/data";
 import { fullPropertyAddress, ownerName } from "@/lib/format";
-import { getPropertyImageProvider } from "@/lib/property-images/provider";
+import { getPropertyImageProviderInfo } from "@/lib/property-images/provider";
+import FetchImagesPanel from "./FetchImagesPanel";
 import {
   isImageStatus,
   PROPERTY_IMAGE_FILTER_ORDER,
@@ -70,7 +71,7 @@ export default async function PropertyImagesPage({
     property_image_status: l.property_image_status,
   }));
 
-  const provider = getPropertyImageProvider();
+  const provider = getPropertyImageProviderInfo(); // name only — no secrets reach the browser
   const href = (s: string) => {
     const q = new URLSearchParams();
     if (campaignId) q.set("campaign", campaignId);
@@ -87,19 +88,12 @@ export default async function PropertyImagesPage({
             Check each house photo before postcards are personalized. Postcard image ready: <b className="text-charcoal">{ready} / {totalInScope}</b>
           </p>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <button
-            type="button"
-            disabled={!provider}
-            className="btn-secondary"
-            title={provider ? undefined : "Image provider not connected"}
-          >
-            Fetch property images
-          </button>
-          <span className="text-xs text-charcoal-light">
-            {provider ? `Provider: ${provider.name}` : "Image provider not connected"}
-          </span>
-        </div>
+        <FetchImagesPanel
+          provider={provider}
+          campaignId={campaignId}
+          campaignName={campaigns.find((c) => c.id === campaignId)?.name ?? null}
+          missingCount={counts.missing ?? 0}
+        />
       </div>
 
       <form method="get" className="card flex flex-wrap items-end gap-3 p-4">
@@ -148,7 +142,7 @@ export default async function PropertyImagesPage({
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {cards.map((c) => (
-            <ImageReviewCard key={`${c.id}-${c.property_image_status}-${c.property_image_url ?? ""}`} lead={c} />
+            <ImageReviewCard key={`${c.id}-${c.property_image_status}-${c.property_image_url ?? ""}`} lead={c} providerName={provider?.name ?? null} />
           ))}
         </div>
       )}

@@ -6,6 +6,7 @@ import { setImageUrl } from "@/lib/actions/property-images";
 import { sourceLabel } from "@/lib/property-images/types";
 import { ImageStatusBadge } from "@/components/StatusBadge";
 import PropertyImageReviewButtons from "@/components/PropertyImageReviewButtons";
+import FetchOneImageButton from "@/components/FetchOneImageButton";
 
 export interface ReviewCardLead {
   id: string;
@@ -17,7 +18,7 @@ export interface ReviewCardLead {
   property_image_status: string;
 }
 
-export default function ImageReviewCard({ lead }: { lead: ReviewCardLead }) {
+export default function ImageReviewCard({ lead, providerName }: { lead: ReviewCardLead; providerName?: string | null }) {
   const [status, setStatus] = useState(lead.property_image_status);
   const [broken, setBroken] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -81,6 +82,10 @@ export default function ImageReviewCard({ lead }: { lead: ReviewCardLead }) {
             </button>
           )}
         </div>
+
+        {providerName && status !== "approved" && (
+          <FetchOneImageButton leadId={lead.id} providerName={providerName} status={status} hasImage={hasImage} />
+        )}
 
         {adding && (
           <form
