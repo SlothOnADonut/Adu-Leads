@@ -1,15 +1,15 @@
-﻿/**
+/**
  * /adu landing page configuration (V1.6, updated V1.7).
  * Everything the marketing team may need to change lives here.
  */
 
 // ---------------------------------------------------------------------
-// LINKS â€” set in .env.local / Vercel (NEXT_PUBLIC_* are public by design)
+// LINKS — set in .env.local / Vercel (NEXT_PUBLIC_* are public by design)
 // ---------------------------------------------------------------------
 const clean = (v: string | undefined) => (v && /^https?:\/\//i.test(v.trim()) ? v.trim() : null);
 
 export const LANDING_LINKS = {
-  /** Approved HELOC page â€” destination of every "Explore Funding Options" button.
+  /** Approved HELOC page — destination of every "Explore Funding Options" button.
    *  If unset, those buttons scroll to the funding section of the page instead. */
   heloc: clean(process.env.NEXT_PUBLIC_HELOC_URL),
   /** Armando's Calendly. If unset, "Book a Call" dials Armando. */
@@ -19,10 +19,10 @@ export const LANDING_LINKS = {
 };
 
 // ---------------------------------------------------------------------
-// IMAGES â€” put photos in /public/landing/ and set the paths here,
+// IMAGES — put photos in /public/landing/ and set the paths here,
 // e.g. "/landing/hero.jpg". Leave null to use the designed fallback panel.
 // Use photos you own or have licensed for marketing. Recommended sizes:
-//   hero 2400Ã—1600, option cards 1200Ã—900, headshot 800Ã—800 (square).
+//   hero 2400×1600, option cards 1200×900, headshot 800×800 (square).
 // ---------------------------------------------------------------------
 export const LANDING_IMAGES: {
   heroFallback: string | null;
@@ -31,18 +31,18 @@ export const LANDING_IMAGES: {
   junior: string | null;
   headshot: string | null;
 } = {
-  heroFallback: "/landing/generic-adu-hero.png", // generic home/ADU photo shown when the visitor has no approved property image
+  heroFallback: null, // generic home/ADU photo shown when the visitor has no approved property image
   garage: "/landing/garage-conversion.png",
   detached: "/landing/detached-adu.png",
   junior: "/landing/junior-adu.png",
-  headshot: null, // Armando's professional headshot â€” do not use a stand-in photo
+  headshot: null, // Armando's professional headshot — do not use a stand-in photo
 };
 
 // ---------------------------------------------------------------------
-// TESTIMONIALS (V1.7) â€” VERIFIED reviews only, with the client's permission
+// TESTIMONIALS (V1.7) — VERIFIED reviews only, with the client's permission
 // and compliance sign-off. Never write or paraphrase a review yourself.
 // Empty list = the testimonials block is not shown at all.
-// Example: { quote: "â€¦", name: "Maria G., Anaheim", source: "Google review" }
+// Example: { quote: "…", name: "Maria G., Anaheim", source: "Google review" }
 // ---------------------------------------------------------------------
 export type Testimonial = { quote: string; name: string; source?: string };
 export const TESTIMONIALS: Testimonial[] = [];
@@ -57,11 +57,11 @@ export const DEFAULT_CITY = "Anaheim";
 // are sequential, so it would expose the mailing list).
 
 // ---------------------------------------------------------------------
-// COMPLIANCE â€” paste employer-approved text only. Empty = labeled placeholder.
+// COMPLIANCE — paste employer-approved text only. Empty = labeled placeholder.
 // ---------------------------------------------------------------------
 export const COMPLIANCE = {
   mortgageDisclosure: "", // EMPLOYER-APPROVED MORTGAGE DISCLOSURE
-  companyNmls: "", // COMPANY NMLS (e.g. "The Mortgage Professionals NMLS #â€¦")
+  companyNmls: "", // COMPANY NMLS (e.g. "The Mortgage Professionals NMLS #…")
   equalHousing: "", // EQUAL HOUSING DISCLOSURE
   privacyPolicyUrl: "", // PRIVACY POLICY link
 };
@@ -71,4 +71,3 @@ export const OFFICE = {
   street: "16901 Bellflower Blvd",
   cityLine: "Bellflower, CA 90706",
 };
-

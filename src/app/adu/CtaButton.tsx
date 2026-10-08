@@ -7,8 +7,11 @@
  * the event's metadata so every click can be attributed to the lead.
  */
 export type CtaCategory = "heloc" | "book" | "call";
-export type CtaButtonId = "explore_heloc" | "book_call" | "start_application" | "call_phone";
-export type CtaPlacement = "header" | "hero" | "heloc" | "process" | "trust" | "final" | "sticky" | "footer";
+// V1.7: "explore_funding" replaces "explore_heloc" (old events keep their label in the dashboard).
+export type CtaButtonId = "explore_funding" | "book_call" | "start_application" | "call_phone";
+/** Where on the page the button sits. Together with `button` this tells apart
+ *  e.g. the hero funding CTA, the funding-section CTA and the final CTA. */
+export type CtaPlacement = "header" | "hero" | "financing" | "armando" | "next_steps" | "final" | "sticky" | "footer";
 
 export default function CtaButton({
   href,

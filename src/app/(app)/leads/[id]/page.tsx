@@ -46,13 +46,29 @@ function eventDetail(e: TrackingEvent): string {
   if (e.event_type === "status_changed" && m.from_status && m.to_status) parts.push(`${m.from_status} → ${m.to_status}`);
   if (e.event_type === "cta_click" && m.cta) {
     const label: Record<string, string> = {
-      explore_heloc: "Explore HELOC Options",
+      explore_funding: "Explore Funding Options",
+      explore_heloc: "Explore HELOC Options", // before V1.7
       book_call: "Book a Call",
       start_application: "Start Loan Application",
       call_phone: "Call Armando",
     };
+    const where: Record<string, string> = {
+      header: "top bar",
+      hero: "top of page",
+      financing: "funding section",
+      armando: "Armando section",
+      next_steps: "what happens next",
+      final: "bottom of page",
+      sticky: "mobile bottom bar",
+      footer: "footer",
+      // before V1.7
+      heloc: "HELOC section",
+      process: "how it works",
+      trust: "Armando section",
+    };
     const btn = typeof m.button === "string" ? label[m.button] ?? m.button : String(m.cta);
-    parts.push(`Button: ${btn}${typeof m.placement === "string" ? ` (${m.placement})` : ""}`);
+    const place = typeof m.placement === "string" ? where[m.placement] ?? m.placement : null;
+    parts.push(`Button: ${btn}${place ? ` (${place})` : ""}`);
   }
   if (e.event_type === "note_added" && m.note) parts.push(`“${String(m.note).slice(0, 120)}”`);
   if (typeof m.user_agent === "string") {
