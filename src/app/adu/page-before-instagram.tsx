@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { BRAND } from "@/lib/constants";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { COMPLIANCE, DEFAULT_CITY, LANDING_IMAGES, LANDING_LINKS, OFFICE, TESTIMONIALS } from "@/lib/landing/config";
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 };
 
 // ---------------------------------------------------------------------------
-// Copy (V1.7). Conservative and non-promissory on purpose — run any change
+// Copy (V1.7). Conservative and non-promissory on purpose â€” run any change
 // past compliance before publishing.
 // ---------------------------------------------------------------------------
 
@@ -100,7 +100,7 @@ const FAQ = [
 ];
 
 // ---------------------------------------------------------------------------
-// Shared styles — tap targets are ≥48px tall everywhere.
+// Shared styles â€” tap targets are â‰¥48px tall everywhere.
 // ---------------------------------------------------------------------------
 const BTN = "inline-flex min-h-12 items-center whitespace-nowrap justify-center gap-2 rounded-full px-6 text-[15px] font-semibold transition-colors duration-150";
 const BTN_GOLD = `${BTN} bg-cta text-night shadow-[0_6px_20px_-8px_rgba(232,179,58,0.7)] hover:bg-cta-hover`;
@@ -117,15 +117,15 @@ const LEAD_P = "mt-3 max-w-2xl text-base leading-[1.65] text-charcoal-light sm:t
 function Placeholder({ label }: { label: string }) {
   return (
     <div className="rounded-md border border-dashed border-cream/30 px-3 py-2 text-[11px] font-semibold tracking-wide text-cream/55 uppercase">
-      Placeholder — {label}
+      Placeholder â€” {label}
     </div>
   );
 }
 
 export default async function AduLandingPage({ searchParams }: { searchParams: Promise<{ ref?: string | string[] }> }) {
-  // Never throw on bad input: any problem → generic page.
-  // V1.6.2: personalization + tracking come ONLY from the random public token (?ref=…).
-  // A sequential ?lead=ANA-0001 is ignored → generic page.
+  // Never throw on bad input: any problem â†’ generic page.
+  // V1.6.2: personalization + tracking come ONLY from the random public token (?ref=â€¦).
+  // A sequential ?lead=ANA-0001 is ignored â†’ generic page.
   let rawRef: unknown = null;
   try {
     const sp = await searchParams;
@@ -133,12 +133,12 @@ export default async function AduLandingPage({ searchParams }: { searchParams: P
   } catch {
     rawRef = null;
   }
-  const publicToken = normalizePublicToken(rawRef); // well-formed token → visit tracking (server re-checks it)
+  const publicToken = normalizePublicToken(rawRef); // well-formed token â†’ visit tracking (server re-checks it)
   const result = await loadLandingLeadWithReason(rawRef, () => createAdminClient() as unknown as LeadLookupClient);
   const lead: LandingLead | null = result.lead;
   if (process.env.NODE_ENV !== "production" && result.reason !== "no_code") {
-    // Dev-only diagnostics (token prefix + reason only — no names, no addresses).
-    console.info(`[adu] ref=${publicToken ? `${publicToken.slice(0, 4)}…` : "(invalid)"} → ${result.reason}${result.detail ? ` (${result.detail})` : ""}`);
+    // Dev-only diagnostics (token prefix + reason only â€” no names, no addresses).
+    console.info(`[adu] ref=${publicToken ? `${publicToken.slice(0, 4)}â€¦` : "(invalid)"} â†’ ${result.reason}${result.detail ? ` (${result.detail})` : ""}`);
   }
 
   const cityName = lead?.city || DEFAULT_CITY;
@@ -147,7 +147,7 @@ export default async function AduLandingPage({ searchParams }: { searchParams: P
   const heroSource = lead?.imageUrl ? "lead-image" : LANDING_IMAGES.heroFallback ? "fallback-image" : "fallback-panel";
   const personalImage = !!lead?.imageUrl;
 
-  // "Explore Funding Options" → the approved HELOC page (or the funding section if not configured).
+  // "Explore Funding Options" â†’ the approved HELOC page (or the funding section if not configured).
   const fundingHref = LANDING_LINKS.heloc ?? "#funding";
   const bookHref = LANDING_LINKS.booking ? bookingUrlWithAttribution(LANDING_LINKS.booking, lead ? publicToken : null) : BRAND.phoneHref;
   const applyHref = LANDING_LINKS.application;
@@ -164,7 +164,7 @@ export default async function AduLandingPage({ searchParams }: { searchParams: P
           <div className="min-w-0 leading-tight">
             <div className="truncate font-serif text-[17px] font-semibold">{BRAND.name}</div>
             <div className="truncate text-[11px] text-cream/65">
-              {BRAND.title} · NMLS {BRAND.nmls}
+              {BRAND.title} Â· NMLS {BRAND.nmls}
             </div>
           </div>
           <CtaButton
@@ -229,18 +229,18 @@ export default async function AduLandingPage({ searchParams }: { searchParams: P
                     {...cta("hero")}
                     className="inline-flex min-h-11 items-center gap-2 text-[15px] font-semibold text-cream hover:text-cta"
                   >
-                    <IconPhone className="h-4 w-4 text-cta" /> Call Armando · {BRAND.phone}
+                    <IconPhone className="h-4 w-4 text-cta" /> Call Armando Â· {BRAND.phone}
                   </CtaButton>
                 </div>
                 <p className="mt-1 flex items-center gap-2 text-[13px] text-cream/65">
-                  <IconCheck className="h-3.5 w-3.5 text-cta" /> No obligation · See what may fit your situation
+                  <IconCheck className="h-3.5 w-3.5 text-cta" /> No obligation Â· See what may fit your situation
                 </p>
 
                 <div className="mt-5 flex items-center gap-3 border-t border-white/10 pt-4">
                   <Headshot size={44} compact />
                   <div className="text-xs leading-snug text-cream/65">
                     <div className="text-sm font-semibold text-cream">{BRAND.name}</div>
-                    {BRAND.title} · NMLS {BRAND.nmls}
+                    {BRAND.title} Â· NMLS {BRAND.nmls}
                   </div>
                 </div>
               </div>
@@ -419,7 +419,7 @@ export default async function AduLandingPage({ searchParams }: { searchParams: P
                     <IconPhone className="h-4 w-4" /> {BRAND.phone}
                   </CtaButton>
                   <div className="text-xs text-cream/55">
-                    {OFFICE.company} · {OFFICE.cityLine}
+                    {OFFICE.company} Â· {OFFICE.cityLine}
                   </div>
                 </div>
               </div>
@@ -452,10 +452,10 @@ export default async function AduLandingPage({ searchParams }: { searchParams: P
               <div className="mt-5 grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-section="testimonials">
                 {TESTIMONIALS.map((t) => (
                   <figure key={t.name + t.quote.slice(0, 20)} className="rounded-2xl border border-cream-200 bg-white p-5">
-                    <blockquote className="text-[15px] leading-relaxed text-charcoal">“{t.quote}”</blockquote>
+                    <blockquote className="text-[15px] leading-relaxed text-charcoal">â€œ{t.quote}â€</blockquote>
                     <figcaption className="mt-3 text-sm font-semibold text-forest-900">
                       {t.name}
-                      {t.source && <span className="font-normal text-charcoal-light"> · {t.source}</span>}
+                      {t.source && <span className="font-normal text-charcoal-light"> Â· {t.source}</span>}
                     </figcaption>
                   </figure>
                 ))}
@@ -516,7 +516,7 @@ export default async function AduLandingPage({ searchParams }: { searchParams: P
         {/* ---------------- 8. Final CTA ---------------- */}
         <section className="bg-[radial-gradient(120%_120%_at_80%_0%,#2c5e41_0%,#10291c_55%,#0b1f16_100%)] text-cream">
           <div className="mx-auto max-w-3xl px-5 py-14 text-center sm:px-6 sm:py-16">
-            <h2 className="font-serif text-[1.75rem] leading-[1.15] font-semibold sm:text-[2.5rem]">See What Your ADU Funding Options Could Look Like</h2>
+            <h2 className="font-serif text-[1.75rem] leading-[1.15] font-semibold sm:text-[2.5rem]">Explore Your ADU Funding Options</h2>
             <p className="mx-auto mt-3 max-w-xl text-base leading-relaxed text-cream/80">
               A quick conversation can help you understand what may be available before you make your next construction decision.
             </p>
@@ -538,7 +538,7 @@ export default async function AduLandingPage({ searchParams }: { searchParams: P
             >
               <IconPhone className="h-5 w-5" /> {BRAND.phone}
             </CtaButton>
-            <p className="mt-2 text-[13px] text-cream/60">No obligation · Financing subject to lender approval and eligibility</p>
+            <p className="mt-2 text-[13px] text-cream/60">No obligation Â· Financing subject to lender approval and eligibility</p>
           </div>
         </section>
       </main>
@@ -594,3 +594,4 @@ export default async function AduLandingPage({ searchParams }: { searchParams: P
     </div>
   );
 }
+
